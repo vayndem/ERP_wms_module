@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AlokasiTransferGudang;
 use App\Models\BiayaTambahanAlokasi;
 use App\Models\LayerPersediaan;
+use App\Models\TransferGudang;
 use App\Models\PemakaianBarangAlokasiStok;
 use App\Models\PenerimaanBarang;
 use App\Models\PenerimaanBarangDetail;
@@ -35,6 +36,7 @@ class LacakPembelianService
             'total_selisih_opname' => $jumlahkan('selisih_opname'),
             'total_terjual' => $jumlahkan('terjual'),
             'total_retur' => $jumlahkan('retur'),
+            'total_hilang_transit' => $jumlahkan('hilang_transit'),
             'total_tidak_terlacak' => $jumlahkan('tidak_terlacak'),
         ];
     }
@@ -51,9 +53,10 @@ class LacakPembelianService
         $selisihOpname = $this->selisihOpname($layerIds);
         $terjual = $this->terjual($layerIds);
         $retur = $this->retur($detail);
+        $hilangTransit = $this->hilangTransit($layerIds);
 
         $nilaiMasuk = round($nilaiPembelian + $biayaTambahan, 2);
-        $terlacak = round($sisaStok + $bebanNpk + $selisihOpname + $terjual + $retur, 2);
+        $terlacak = round($sisaStok + $bebanNpk + $selisihOpname + $terjual + $retur + $hilangTransit, 2);
 
         return [
             'detail' => $detail,
@@ -69,6 +72,7 @@ class LacakPembelianService
             'selisih_opname' => $selisihOpname,
             'terjual' => $terjual,
             'retur' => $retur,
+            'hilang_transit' => $hilangTransit,
             'tidak_terlacak' => round($nilaiMasuk - $terlacak, 2),
             'sebaran_gudang' => $this->sebaranGudang($layers),
             'jumlah_layer' => count($layerIds),
@@ -131,6 +135,24 @@ class LacakPembelianService
         }
 
         return round((float) PemakaianBarangAlokasiStok::whereIn('inventory_layer_id', $layerIds)->sum('total_cost'), 2);
+    }
+
+    private function hilangTransit(array $layerIds): float
+    {
+        if (empty($layerIds)) {
+            return 0.0;
+        }
+
+        $selisih = DB::table('alokasi_transfer_gudangs as a')
+            ->join('wms_layer_persediaan as tujuan', 'tujuan.id', '=', 'a.inventory_layer_tujuan_id')
+            ->join('detail_transfer_gudangs as d', 'd.id', '=', 'a.detail_transfer_gudang_id')
+            ->join('transfer_gudangs as t', 't.id', '=', 'd.transfer_gudang_id')
+            ->whereIn('a.inventory_layer_asal_id', $layerIds)
+            ->where('t.status', TransferGudang::DITERIMA)
+            ->selectRaw('COALESCE(SUM(a.total_nilai - (tujuan.initial_quantity * tujuan.unit_cost)), 0) as nilai')
+            ->value('nilai');
+
+        return round(max((float) $selisih, 0.0), 2);
     }
 
     private function terjual(array $layerIds): float

@@ -17,10 +17,16 @@ class PusatKerja extends Model
     protected $table = 'wms_pusat_kerja';
 
     protected $fillable = [
-        'kode', 'nama', 'gudang_id', 'kapasitas_menit_per_hari', 'status', 'keterangan', 'dibuat_oleh',
+        'kode', 'nama', 'gudang_id', 'kapasitas_menit_per_hari',
+        'tarif_tenaga_kerja_per_jam', 'tarif_overhead_per_jam',
+        'status', 'keterangan', 'dibuat_oleh',
     ];
 
-    protected $casts = ['kapasitas_menit_per_hari' => 'decimal:2'];
+    protected $casts = [
+        'kapasitas_menit_per_hari' => 'decimal:2',
+        'tarif_tenaga_kerja_per_jam' => 'decimal:2',
+        'tarif_overhead_per_jam' => 'decimal:2',
+    ];
 
     public function gudang(): BelongsTo
     {

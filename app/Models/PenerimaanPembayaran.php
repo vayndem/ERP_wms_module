@@ -17,13 +17,18 @@ class PenerimaanPembayaran extends Model
 
     protected $fillable = [
         'nomor', 'tanggal', 'faktur_penjualan_id', 'pelanggan_id', 'coa_kas_bank_id',
-        'jumlah', 'referensi', 'status', 'journal_id', 'dibuat_oleh',
+        'jumlah', 'jumlah_uang_muka', 'uang_muka_id', 'referensi', 'status', 'journal_id', 'dibuat_oleh',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
         'jumlah' => 'decimal:2',
     ];
+
+    public function uangMuka(): BelongsTo
+    {
+        return $this->belongsTo(UangMukaPelanggan::class, 'uang_muka_id');
+    }
 
     public function faktur(): BelongsTo
     {

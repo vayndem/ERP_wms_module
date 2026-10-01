@@ -60,6 +60,10 @@
                         <div class="text-xs uppercase text-base-content/60">Terjual</div>
                         <div class="text-xl font-bold text-info">{{ $rupiah($data['total_terjual']) }}</div>
                     </div>
+                    <div class="rounded-lg border border-warning/40 bg-warning/5 p-4">
+                        <div class="text-xs uppercase text-base-content/60">Hilang di Jalan</div>
+                        <div class="text-xl font-bold text-warning">{{ $rupiah($data['total_hilang_transit']) }}</div>
+                    </div>
                     <div class="rounded-lg border border-error/40 bg-error/5 p-4">
                         <div class="text-xs uppercase text-base-content/60">Selisih Opname</div>
                         <div class="text-xl font-bold text-error">{{ $rupiah($data['total_selisih_opname']) }}</div>
@@ -78,6 +82,7 @@
                                 <th class="text-end">Terjual</th>
                                 <th class="text-end">Selisih Opname</th>
                                 <th class="text-end">Retur</th>
+                                <th class="text-end">Hilang di Jalan</th>
                                 <th class="text-end">Belum Terlacak</th>
                             </tr>
                         </thead>
@@ -100,6 +105,7 @@
                                     <td class="text-end text-info">{{ $rupiah($row['terjual']) }}</td>
                                     <td class="text-end {{ $row['selisih_opname'] != 0 ? 'text-error' : '' }}">{{ $rupiah($row['selisih_opname']) }}</td>
                                     <td class="text-end">{{ $rupiah($row['retur']) }}</td>
+                                    <td class="text-end {{ abs($row['hilang_transit']) >= 0.01 ? 'text-warning font-semibold' : 'text-base-content/40' }}">{{ $rupiah($row['hilang_transit']) }}</td>
                                     <td class="text-end {{ abs($row['tidak_terlacak']) >= 0.01 ? 'text-error font-semibold' : 'text-base-content/40' }}">{{ $rupiah($row['tidak_terlacak']) }}</td>
                                 </tr>
                             @empty
@@ -115,6 +121,7 @@
                                 <td class="text-end">{{ $rupiah($data['total_terjual']) }}</td>
                                 <td class="text-end">{{ $rupiah($data['total_selisih_opname']) }}</td>
                                 <td class="text-end">{{ $rupiah($data['total_retur']) }}</td>
+                                <td class="text-end">{{ $rupiah($data['total_hilang_transit']) }}</td>
                                 <td class="text-end">{{ $rupiah($data['total_tidak_terlacak']) }}</td>
                             </tr>
                         </tfoot>
@@ -125,7 +132,7 @@
                     <div class="mx-4 mb-4 alert alert-warning">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <span>
-                            {{ $rupiah($data['total_tidak_terlacak']) }} belum terlacak. Nilai ini muncul ketika barang keluar lewat jalur yang tidak menyimpan kaitan ke layer asalnya. Saat ini hanya <strong>perakitan kit</strong> yang begitu: nilai komponen pindah ke layer kit dan tidak lagi terhubung ke pembelian ini.
+                            {{ $rupiah($data['total_tidak_terlacak']) }} belum terlacak. Nilai ini muncul ketika barang keluar lewat jalur yang tidak menyimpan kaitan ke layer asalnya. Saat ini hanya <strong>perakitan kit</strong> yang begitu: nilai komponen pindah ke layer kit dan tidak lagi terhubung ke pembelian ini. Barang yang hilang dalam perjalanan antar gudang <strong>tidak lagi masuk ke sini</strong> — nilainya berdiri sendiri di kolom Hilang di Jalan.
                         </span>
                     </div>
                 @endif

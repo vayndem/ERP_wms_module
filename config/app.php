@@ -70,6 +70,11 @@ return [
     |
     */
 
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
+
+    'npwp_perusahaan' => env('NPWP_PERUSAHAAN', ''),
+    'nitku_perusahaan' => env('NITKU_PERUSAHAAN', ''),
+
     'timezone' => 'Asia/Jakarta',
 
     /*

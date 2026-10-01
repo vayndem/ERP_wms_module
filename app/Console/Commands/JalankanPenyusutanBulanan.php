@@ -45,6 +45,6 @@ class JalankanPenyusutanBulanan extends Command
             $this->warn('  gagal: ' . ($gagal['nomor_aset'] ?? '?') . ' — ' . ($gagal['reason'] ?? ''));
         }
 
-        return self::SUCCESS;
+        return ($hasil['failed'] ?? []) === [] ? self::SUCCESS : self::FAILURE;
     }
 }

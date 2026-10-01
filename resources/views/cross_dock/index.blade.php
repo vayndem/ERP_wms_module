@@ -81,7 +81,11 @@
                         @empty
                             <tr>
                                 <td colspan="9" class="py-6 text-center text-base-content/50">
-                                    Tidak ada penerimaan terbaru yang cocok dengan pesanan penjualan terbuka.
+                                    @if ($tanpaGudang)
+                                        Akun Anda belum diberi gudang mana pun, jadi belum ada penerimaan yang bisa di-cross dock. Minta admin menambahkan pembagian gudang.
+                                    @else
+                                        Tidak ada penerimaan terbaru yang cocok dengan pesanan penjualan terbuka.
+                                    @endif
                                 </td>
                             </tr>
                         @endforelse
@@ -134,7 +138,13 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="py-6 text-center text-base-content/50">Belum ada cross dock tercatat.</td>
+                                <td colspan="8" class="py-6 text-center text-base-content/50">
+                                    @if ($tanpaGudang)
+                                        Belum ada gudang yang ditugaskan ke akun Anda.
+                                    @else
+                                        Belum ada cross dock tercatat.
+                                    @endif
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>

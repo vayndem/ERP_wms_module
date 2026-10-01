@@ -8,8 +8,26 @@
                 {{ $pesanan->pelanggan?->nama }} &middot; {{ $pesanan->tanggal?->format('d-m-Y') }} &middot; Gudang {{ $pesanan->gudang?->nama }}
                 &middot; Sales {{ $pesanan->sales?->name ?? 'belum ditandai' }}
                 <span class="badge {{ $pesanan->status === 'OPEN' ? 'badge-warning' : 'badge-success' }}">{{ $pesanan->status }}</span>
+                @if ($pesanan->plafon_dilampaui)
+                    <span class="badge badge-error">Menembus plafon kredit</span>
+                @endif
             </p>
         </div>
+        @if ($pesanan->plafon_dilampaui)
+            <div class="alert alert-warning mb-4">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div>
+                    <div class="font-semibold">Pesanan ini dibuat melewati plafon kredit pelanggan.</div>
+                    <div class="text-sm">
+                        Alasan: {{ $pesanan->alasan_plafon ?: 'tidak dicatat' }}
+                        &middot; disetujui {{ $pesanan->penembusPlafon?->name ?? 'Super Admin' }}
+                        @if ($pesanan->eksposur_saat_dibuat !== null)
+                            &middot; eksposur sebelum pesanan ini Rp {{ number_format($pesanan->eksposur_saat_dibuat, 2, ',', '.') }}
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
         @if (session('success'))
             <div class="alert alert-success mb-4"><i class="fa-solid fa-circle-check"></i><span>{{ session('success') }}</span></div>
         @endif

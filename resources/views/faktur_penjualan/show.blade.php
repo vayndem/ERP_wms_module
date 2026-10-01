@@ -64,6 +64,37 @@
         </div>
 
         @can('terimaPembayaran', $faktur)
+            @if ($uangMuka->isNotEmpty() && $faktur->sisa_tagihan > 0)
+                <form method="POST" action="{{ route('faktur-penjualan.uang-muka', $faktur) }}" class="card mb-4 border border-info/40 bg-info/5 p-4 shadow-sm">
+                    @csrf
+                    <h4 class="mb-1 font-semibold">Pakai Uang Muka Pelanggan</h4>
+                    <p class="mb-3 text-sm text-base-content/60">
+                        Saldo uang muka {{ $faktur->pelanggan?->nama }}: Rp {{ number_format($uangMuka->sum('sisa'), 2, ',', '.') }}
+                    </p>
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Tanggal</span></label>
+                            <input type="date" name="tanggal" value="{{ today()->format('Y-m-d') }}" required class="input input-bordered input-sm">
+                        </div>
+                        <div class="form-control md:col-span-2">
+                            <label class="label"><span class="label-text">Uang muka</span></label>
+                            <select name="uang_muka_id" required class="select select-bordered select-sm">
+                                @foreach ($uangMuka as $um)
+                                    <option value="{{ $um->id }}">{{ $um->nomor }} &middot; sisa Rp {{ number_format($um->sisa, 2, ',', '.') }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Jumlah dipakai</span></label>
+                            <input type="number" step="0.01" min="0.01" name="jumlah"
+                                value="{{ min((float) $faktur->sisa_tagihan, (float) $uangMuka->sum('sisa')) }}" required class="input input-bordered input-sm">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-info btn-sm">Pakai Uang Muka</button>
+                    </div>
+                </form>
+            @endif
             <form method="POST" action="{{ route('faktur-penjualan.bayar', $faktur) }}" class="card mb-4 border border-base-300 bg-base-100 p-4 shadow-sm">
                 @csrf
                 <h4 class="mb-3 font-semibold">Terima Pembayaran</h4>
@@ -83,7 +114,8 @@
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text">Jumlah</span></label>
-                        <input type="number" step="0.01" min="0.01" max="{{ $faktur->sisa_tagihan }}" name="jumlah" value="{{ $faktur->sisa_tagihan }}" required class="input input-bordered input-sm">
+                        <input type="number" step="0.01" min="0.01" name="jumlah" value="{{ $faktur->sisa_tagihan }}" required class="input input-bordered input-sm">
+                        <span class="label-text-alt mt-1 text-base-content/60">Kelebihan bayar otomatis diparkir sebagai uang muka pelanggan.</span>
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text">Referensi</span></label>

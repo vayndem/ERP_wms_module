@@ -44,6 +44,7 @@ class ProcurementAnalyticsTest extends TestCase
                 + $data['total_selisih_opname']
                 + $data['total_terjual']
                 + $data['total_retur']
+                + $data['total_hilang_transit']
                 + $data['total_tidak_terlacak'];
 
             $this->assertEqualsWithDelta(
@@ -65,14 +66,12 @@ class ProcurementAnalyticsTest extends TestCase
         $this->assertGreaterThan(0, $diperiksa);
     }
 
-    public function test_value_is_untraced_only_when_kitting_or_a_transfer_shortage_explains_it(): void
+    public function test_value_is_untraced_only_when_kitting_explains_it(): void
     {
         $service = app(LacakPembelianService::class);
         $db = \Illuminate\Support\Facades\DB::class;
 
-        $adaKitting = $db::table('wms_perakitan_kit_detail')->exists();
-        $adaSelisihTransfer = $db::table('detail_transfer_gudangs')->where('jumlah_selisih', '>', 0)->exists();
-        $adaPenyebab = $adaKitting || $adaSelisihTransfer;
+        $adaPenyebab = $db::table('wms_perakitan_kit_detail')->exists();
 
         $totalTidakTerlacak = 0.0;
         $diperiksa = 0;
@@ -97,9 +96,9 @@ class ProcurementAnalyticsTest extends TestCase
         $this->assertSame(
             $adaPenyebab,
             round($totalTidakTerlacak, 2) > 0.0,
-            'Hanya ada dua jalur yang tidak mencatat tautan balik ke layer: perakitan kit dan selisih transfer. '
-                . 'Kalau tidak ada keduanya, seluruh nilai pembelian wajib terlacak habis; kalau salah satunya ada, '
-                . 'residu itu memang harus tampil dan bukan disembunyikan.'
+            'Sejak 2026-10-01 selisih transfer punya embernya sendiri (hilang_transit), jadi tinggal perakitan kit '
+                . 'yang tidak mencatat tautan balik ke layer. Tanpa kitting seluruh nilai pembelian wajib terlacak habis; '
+                . 'dengan kitting residu itu memang harus tampil dan bukan disembunyikan.'
         );
     }
 

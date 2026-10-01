@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AccountingSetting;
 use App\Models\FakturPembelian;
 use App\Models\PembayaranFaktur;
+use App\Models\JamKerjaProduksi;
 use App\Models\Jurnal;
 use App\Models\PenerimaanBarang;
 use App\Models\PenerimaanBarangDetail;
@@ -389,6 +390,42 @@ class WmsAccountingService
         return $nilaiPerKategori;
     }
 
+    public function postSerapanProduksi(JamKerjaProduksi $jamKerja): Jurnal
+    {
+        $this->periods->assertOpen($jamKerja->tanggal, 'Serapan jam kerja produksi');
+
+        $jamKerja->loadMissing(['pesanan', 'pusatKerja']);
+
+        $tenagaKerja = round((float) $jamKerja->biaya_tenaga_kerja, 2);
+        $overhead = round((float) $jamKerja->biaya_overhead, 2);
+        $total = round($tenagaKerja + $overhead, 2);
+
+        if ($total <= 0) {
+            throw new RuntimeException('Serapan jam kerja tidak bernilai, jadi tidak ada yang dijurnal.');
+        }
+
+        $gudangId = $jamKerja->pesanan?->gudang_id ?? $jamKerja->pusatKerja?->gudang_id;
+        $lines = [];
+
+        $this->line($lines, AccountingSetting::accountId(AccountingSetting::BARANG_DALAM_PROSES), $total, 0,
+            "Serapan jam kerja {$jamKerja->nomor}", $gudangId);
+
+        $this->line($lines, AccountingSetting::accountId(AccountingSetting::BEBAN_TENAGA_KERJA_DISERAP), 0, $tenagaKerja,
+            "Tenaga kerja langsung diserap {$jamKerja->nomor}", $gudangId);
+
+        $this->line($lines, AccountingSetting::accountId(AccountingSetting::BEBAN_OVERHEAD_DISERAP), 0, $overhead,
+            "Overhead pabrik diserap {$jamKerja->nomor}", $gudangId);
+
+        return $this->post(
+            "JKP-{$jamKerja->nomor}",
+            $jamKerja->tanggal,
+            'SERAPAN_PRODUKSI',
+            $jamKerja->id,
+            "Serapan jam kerja produksi {$jamKerja->nomor}",
+            $lines,
+        );
+    }
+
     public function postSuratJalan(SuratJalan $suratJalan): Jurnal
     {
         $this->periods->assertOpen($suratJalan->tanggal, 'Surat jalan');
@@ -479,14 +516,28 @@ class WmsAccountingService
 
         $jumlah = round((float) $pembayaran->jumlah, 2);
 
-        if ($jumlah <= 0) {
+        if ($jumlah <= 0 && round((float) $pembayaran->jumlah_uang_muka, 2) <= 0) {
             throw new RuntimeException('Nilai penerimaan pembayaran harus lebih besar dari nol.');
         }
 
+        $uangMuka = round((float) $pembayaran->jumlah_uang_muka, 2);
         $lines = [];
-        $this->line($lines, $pembayaran->coa_kas_bank_id, $jumlah, 0, "Penerimaan {$pembayaran->nomor}");
+
+        if ($pembayaran->uang_muka_id) {
+            $this->line($lines, AccountingSetting::accountId(AccountingSetting::UANG_MUKA_PELANGGAN), $jumlah, 0,
+                "Pemakaian uang muka {$pembayaran->nomor}");
+        } else {
+            $this->line($lines, $pembayaran->coa_kas_bank_id, round($jumlah + $uangMuka, 2), 0,
+                "Penerimaan {$pembayaran->nomor}");
+        }
+
         $this->line($lines, AccountingSetting::accountId(AccountingSetting::PIUTANG_USAHA), 0, $jumlah,
             "Pelunasan piutang {$pembayaran->nomor}");
+
+        if (!$pembayaran->uang_muka_id && $uangMuka > 0) {
+            $this->line($lines, AccountingSetting::accountId(AccountingSetting::UANG_MUKA_PELANGGAN), 0, $uangMuka,
+                "Kelebihan bayar diparkir sebagai uang muka {$pembayaran->nomor}");
+        }
 
         return $this->post(
             "RC-{$pembayaran->nomor}",

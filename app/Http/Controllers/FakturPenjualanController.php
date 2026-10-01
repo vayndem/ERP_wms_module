@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePenerimaanPembayaranRequest;
+use App\Http\Requests\PakaiUangMukaPelangganRequest;
 use App\Models\BaganAkun;
+use App\Models\UangMukaPelanggan;
 use App\Models\FakturPenjualan;
 use App\Services\FakturPenjualanService;
 use Illuminate\Http\Request;
@@ -45,7 +47,30 @@ class FakturPenjualanController extends Controller
         return view('faktur_penjualan.show', [
             'faktur' => $faktur,
             'kasBank' => BaganAkun::where('is_cash_bank', true)->where('is_active', true)->orderBy('kode_akun')->get(),
+            'uangMuka' => UangMukaPelanggan::where('pelanggan_id', $faktur->pelanggan_id)
+                ->where('status', UangMukaPelanggan::AKTIF)
+                ->orderBy('tanggal')
+                ->get(),
         ]);
+    }
+
+    public function pakaiUangMuka(PakaiUangMukaPelangganRequest $request, FakturPenjualan $faktur)
+    {
+        $data = $request->validated();
+
+        try {
+            $this->faktur->gunakanUangMuka(
+                $faktur,
+                UangMukaPelanggan::findOrFail($data['uang_muka_id']),
+                (float) $data['jumlah'],
+                $data['tanggal'],
+                $request->user()
+            );
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['faktur' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Uang muka pelanggan dipakai untuk melunasi faktur ini.');
     }
 
     public function post(Request $request, FakturPenjualan $faktur)

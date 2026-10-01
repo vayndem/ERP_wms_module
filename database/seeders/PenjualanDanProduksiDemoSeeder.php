@@ -7,6 +7,7 @@ use App\Models\Bom;
 use App\Models\DataPesanan;
 use App\Models\FakturPenjualan;
 use App\Models\Gudang;
+use App\Models\LayerPersediaan;
 use App\Models\PemakaianBarang;
 use App\Models\Pelanggan;
 use App\Models\PesananPenjualan;
@@ -339,7 +340,7 @@ class PenjualanDanProduksiDemoSeeder extends Seeder
             'kode' => app(\App\Services\DocumentNumberService::class)->internal('NPK', 'PRD'),
             'kode_datapesanan' => $wo->nomor,
             'data_pesanan_id' => $wo->id,
-            'tanggal' => today()->subDays(15)->toDateString(),
+            'tanggal' => $this->tanggalPemakaian((int) $stok->gudang_id, (int) $bahan->id, $bahan->toStockQuantity($jumlah)),
             'id_barang' => $bahan->id,
             'id_gudang_asal' => $stok->gudang_id,
             'jumlah' => $jumlah,
@@ -363,6 +364,32 @@ class PenjualanDanProduksiDemoSeeder extends Seeder
         );
 
         app(WmsAccountingService::class)->postNpk($npk->fresh());
+    }
+
+    private function tanggalPemakaian(int $gudangId, int $bahanId, float $jumlahStok): string
+    {
+        $bawaan = today()->subDays(15);
+
+        $layers = LayerPersediaan::where('gudang_id', $gudangId)
+            ->where('bahan_id', $bahanId)
+            ->where('stock_status', 'AVAILABLE')
+            ->where('remaining_quantity', '>', 0)
+            ->orderBy('transaction_date')
+            ->get(['transaction_date', 'remaining_quantity']);
+
+        $terkumpul = 0.0;
+
+        foreach ($layers as $layer) {
+            $terkumpul += (float) $layer->remaining_quantity;
+
+            if ($terkumpul + 0.000001 >= $jumlahStok) {
+                $tanggalLayer = \Illuminate\Support\Carbon::parse($layer->transaction_date);
+
+                return $tanggalLayer->greaterThan($bawaan) ? $tanggalLayer->toDateString() : $bawaan->toDateString();
+            }
+        }
+
+        return $bawaan->toDateString();
     }
 
     private function akunKasBank(): int

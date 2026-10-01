@@ -49,19 +49,31 @@
                             <input type="number" step="0.01" max="1440" name="kapasitas_menit_per_hari"
                                 value="{{ old('kapasitas_menit_per_hari') }}" class="input input-bordered input-sm">
                         </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Tarif tenaga kerja / jam</span></label>
+                            <input type="number" step="0.01" min="0" name="tarif_tenaga_kerja_per_jam"
+                                value="{{ old('tarif_tenaga_kerja_per_jam', 0) }}" class="input input-bordered input-sm">
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Tarif overhead / jam</span></label>
+                            <input type="number" step="0.01" min="0" name="tarif_overhead_per_jam"
+                                value="{{ old('tarif_overhead_per_jam', 0) }}" class="input input-bordered input-sm">
+                        </div>
                         <button type="submit" class="btn btn-primary btn-sm w-full">Tambah Pusat Kerja</button>
                     </form>
                 @endcan
 
                 <div class="overflow-x-auto border-t border-base-300 p-4">
                     <table class="table table-sm">
-                        <thead><tr><th>Kode</th><th>Nama</th><th class="text-end">Kapasitas</th><th>Status</th><th></th></tr></thead>
+                        <thead><tr><th>Kode</th><th>Nama</th><th class="text-end">Kapasitas</th><th class="text-end">Tarif TK/jam</th><th class="text-end">Tarif OH/jam</th><th>Status</th><th></th></tr></thead>
                         <tbody>
                             @forelse ($pusatKerja as $item)
                                 <tr>
                                     <td class="font-mono text-xs">{{ $item->kode }}</td>
                                     <td>{{ $item->nama }}<div class="text-xs text-base-content/50">{{ $item->gudang?->nama ?? 'lintas gudang' }}</div></td>
                                     <td class="text-end">{{ $item->kapasitas_menit_per_hari ? number_format($item->kapasitas_menit_per_hari, 0, ',', '.') : '-' }}</td>
+                                    <td class="text-end">{{ number_format($item->tarif_tenaga_kerja_per_jam, 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ number_format($item->tarif_overhead_per_jam, 0, ',', '.') }}</td>
                                     <td><span class="badge badge-sm {{ $item->isAktif() ? 'badge-success' : 'badge-ghost' }}">{{ $item->status }}</span></td>
                                     <td class="text-end">
                                         @can('update', $item)

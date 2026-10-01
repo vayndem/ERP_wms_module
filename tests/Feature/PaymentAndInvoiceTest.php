@@ -383,24 +383,50 @@ class PaymentAndInvoiceTest extends TestCase
     public function test_purchase_return_after_partially_paid_invoice_reduces_invoice_balance(): void
     {
         $warehouse = User::factory()->create(['type' => User::ROLE_WAREHOUSE]);
-        $lpb = PenerimaanBarang::where('document_type', 'GOODS')
+        $sisaLayer = fn ($d) => (float) (LayerPersediaan::where('source_type', 'LPB_DETAIL')
+            ->where('source_id', $d->id)->value('remaining_quantity') ?? 0);
+
+        $pilihan = PenerimaanBarang::where('document_type', 'GOODS')
             ->whereNotNull('no_invoice')
             ->where('status', PenerimaanBarang::POSTED)
             ->get()
-            ->first(fn ($candidate) => $candidate->details->contains(
-                fn ($d) => (float) (LayerPersediaan::where('source_type', 'LPB_DETAIL')->where('source_id', $d->id)->value('remaining_quantity') ?? 0) > 0
-            ));
-        $this->assertNotNull($lpb, 'Fixture LPB dengan invoice dan layer tersisa tidak ditemukan.');
-        $detail = $lpb->details->first(fn ($d) => (float) (LayerPersediaan::where('source_type', 'LPB_DETAIL')->where('source_id', $d->id)->value('remaining_quantity') ?? 0) > 0);
-        $layer = LayerPersediaan::where('source_type', 'LPB_DETAIL')->where('source_id', $detail->id)->firstOrFail();
-        $invoice = FakturPembelian::where('no_invoice', $lpb->no_invoice)->firstOrFail();
+            ->map(function ($candidate) use ($sisaLayer) {
+                $detail = $candidate->details->first(fn ($d) => $sisaLayer($d) > 0);
+                $invoice = FakturPembelian::where('no_invoice', $candidate->no_invoice)->first();
 
-        $returQty = min(1.0, (float) $layer->remaining_quantity);
-        $this->assertGreaterThan(0, $returQty);
-        $returValue = round($returQty * (float) $detail->harga, 2);
+                if (!$detail || !$invoice) {
+                    return null;
+                }
+
+                $returQty = min(1.0, $sisaLayer($detail));
+
+                return [
+                    'lpb' => $candidate,
+                    'detail' => $detail,
+                    'invoice' => $invoice,
+                    'retur_qty' => $returQty,
+                    'retur_value' => round($returQty * (float) $detail->harga, 2),
+                ];
+            })
+            ->filter()
+            ->sortByDesc(fn ($baris) => (float) $baris['invoice']->sisa_tagihan)
+            ->first(fn ($baris) => $baris['retur_qty'] > 0
+                && $baris['invoice']->status !== FakturPembelian::VOID);
+
+        $this->assertNotNull(
+            $pilihan,
+            'Butuh satu LPB bernomor invoice yang masih punya layer tersisa untuk diretur.'
+        );
+
+        $lpb = $pilihan['lpb'];
+        $detail = $pilihan['detail'];
+        $invoice = $pilihan['invoice'];
+        $layer = LayerPersediaan::where('source_type', 'LPB_DETAIL')->where('source_id', $detail->id)->firstOrFail();
+
+        $returQty = $pilihan['retur_qty'];
+        $returValue = $pilihan['retur_value'];
         $sisaBefore = (float) $invoice->sisa_tagihan;
         $grandBefore = (float) $invoice->grand_total;
-        $this->assertGreaterThan($returValue, $sisaBefore, 'Fixture invoice tidak memiliki sisa tagihan yang cukup untuk skenario ini.');
 
         $numbers = app(DocumentNumberService::class);
         $response = $this->actingAs($warehouse)->postJson(route('retur-pembelian.store'), [
@@ -414,7 +440,15 @@ class PaymentAndInvoiceTest extends TestCase
 
         $invoice->refresh();
         $this->assertEqualsWithDelta($grandBefore - $returValue, (float) $invoice->grand_total, 0.01);
-        $this->assertEqualsWithDelta($sisaBefore - $returValue, (float) $invoice->sisa_tagihan, 0.01);
+
+        $this->assertEqualsWithDelta(
+            max($sisaBefore - $returValue, 0.0),
+            (float) $invoice->sisa_tagihan,
+            0.01,
+            'Retur memotong sisa tagihan sebesar nilainya, dan tidak boleh membuat sisa tagihan menjadi negatif ketika faktur sudah lunas.'
+        );
+
+        $this->assertGreaterThanOrEqual(0.0, (float) $invoice->sisa_tagihan);
         $this->assertEqualsWithDelta($returValue, (float) $retur->hutang_reduction, 0.01);
         $this->assertNull($retur->advance_payment_id);
 

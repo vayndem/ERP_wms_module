@@ -179,7 +179,7 @@ class RoutingProduksiTest extends TestCase
         foreach (['tarif', 'biaya', 'rate', 'cost'] as $kata) {
             $this->assertEmpty(
                 array_filter($kolom, fn ($c) => str_contains($c, $kata)),
-                "Routing sengaja tidak menyimpan tarif: penyerapan tenaga kerja dan overhead ke WIP masih menunggu keputusan tarif."
+                "Tarif hidup di pusat kerja, bukan di baris routing: satu operasi dinilai dari tarif pusat kerjanya saat jam kerja dicatat (sejak 2026-10-01)."
             );
         }
     }

@@ -102,6 +102,9 @@ Route::middleware('auth')->group(function () {
     Route::post('kit/{kit}/rakit', [App\Http\Controllers\KitController::class, 'rakit'])->name('kit.rakit');
     Route::delete('kit/{kit}', [App\Http\Controllers\KitController::class, 'destroy'])->name('kit.destroy');
 
+    Route::get('subkontrak', [App\Http\Controllers\SubkontrakController::class, 'index'])->name('subkontrak.index');
+    Route::post('subkontrak', [App\Http\Controllers\SubkontrakController::class, 'store'])->name('subkontrak.store');
+    Route::post('subkontrak/{subkontrak}/terima', [App\Http\Controllers\SubkontrakController::class, 'terima'])->name('subkontrak.terima');
     Route::get('cross-dock', [App\Http\Controllers\CrossDockController::class, 'index'])->name('cross-dock.index');
     Route::post('cross-dock', [App\Http\Controllers\CrossDockController::class, 'store'])->name('cross-dock.store');
     Route::post('cross-dock/{crossDock}/batalkan', [App\Http\Controllers\CrossDockController::class, 'batalkan'])->name('cross-dock.batalkan');

@@ -25,14 +25,19 @@ class CrossDockService
         private DocumentNumberService $numbers,
     ) {}
 
-    public function saran(?int $gudangId = null, int $hariTerakhir = self::HARI_TERAKHIR): Collection
+    public function saran(?int $gudangId = null, ?array $gudangDiizinkan = null, int $hariTerakhir = self::HARI_TERAKHIR): Collection
     {
+        if ($gudangDiizinkan !== null && $gudangDiizinkan === []) {
+            return collect();
+        }
+
         $batas = now()->subDays($hariTerakhir)->startOfDay();
 
         $pesanan = PesananPenjualanDetail::with(['bahan', 'pesanan.pelanggan'])
             ->whereHas('pesanan', fn ($query) => $query
                 ->where('status', PesananPenjualan::OPEN)
-                ->when($gudangId, fn ($q) => $q->where('gudang_id', $gudangId)))
+                ->when($gudangId, fn ($q) => $q->where('gudang_id', $gudangId))
+                ->when($gudangDiizinkan !== null, fn ($q) => $q->whereIn('gudang_id', $gudangDiizinkan)))
             ->get()
             ->filter(fn (PesananPenjualanDetail $detail) => $detail->sisaKirim() > 0.000001);
 

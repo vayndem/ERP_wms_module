@@ -234,7 +234,7 @@ class PenjualanDanPiutangTest extends TestCase
         $this->assertEqualsWithDelta(0, (float) $faktur->sisa_tagihan, 0.01);
     }
 
-    public function test_payment_cannot_exceed_the_outstanding_balance(): void
+    public function test_payment_beyond_the_outstanding_balance_becomes_a_customer_advance(): void
     {
         $purchasing = User::factory()->create(['type' => User::ROLE_PURCHASING]);
         $gudangUser = User::factory()->create(['type' => User::ROLE_SUPER_ADMIN]);
@@ -254,13 +254,24 @@ class PenjualanDanPiutangTest extends TestCase
         );
 
         $kas = BaganAkun::where('is_cash_bank', true)->firstOrFail();
+        $sisa = round((float) $faktur->sisa_tagihan, 2);
 
-        $this->expectException(\RuntimeException::class);
-        $service->terimaPembayaran($faktur, [
+        $pembayaran = $service->terimaPembayaran($faktur, [
             'tanggal' => today()->toDateString(),
             'coa_kas_bank_id' => $kas->id,
-            'jumlah' => 999999,
+            'jumlah' => $sisa + 125000,
         ], $finance);
+
+        $this->assertEqualsWithDelta($sisa, (float) $pembayaran->jumlah, 0.01,
+            'Faktur hanya boleh tertutup sebesar sisa tagihannya, berapa pun uang yang masuk.');
+        $this->assertEqualsWithDelta(0.0, (float) $faktur->fresh()->sisa_tagihan, 0.01);
+
+        $this->assertEqualsWithDelta(
+            125000,
+            \App\Models\UangMukaPelanggan::saldoPelanggan((int) $faktur->pelanggan_id),
+            0.01,
+            'Sejak 2026-10-01 kelebihan bayar diparkir sebagai uang muka, bukan ditolak.'
+        );
     }
 
     public function test_the_whole_sales_flow_works_through_http(): void

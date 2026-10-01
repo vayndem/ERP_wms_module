@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bahan;
+use App\Models\AccountingSetting;
 use App\Models\BaganAkun;
 use App\Models\Gudang;
 use App\Models\LayerPersediaan;
@@ -21,6 +22,15 @@ use Illuminate\View\View;
 
 class WmsControlController extends Controller
 {
+    private function akunLawanLandedCost(): ?int
+    {
+        try {
+            return AccountingSetting::accountId(AccountingSetting::BIAYA_MASIH_HARUS_DIBAYAR);
+        } catch (\RuntimeException) {
+            return null;
+        }
+    }
+
     public function index(Request $request): View
     {
         $this->authorize('viewWmsControl');
@@ -48,6 +58,7 @@ class WmsControlController extends Controller
             'pendingLpbs' => PenerimaanBarang::with('details.bahan')->whereIn('gudang_id', $warehouseIds)->whereIn('status', [PenerimaanBarang::DRAFT, PenerimaanBarang::POSTED])->where(fn ($query) => $query->whereNull('document_type')->orWhere('document_type', '!=', 'SERVICE_BAP'))->where('receiving_status', '!=', 'PUTAWAY')->latest()->limit(30)->get(),
             'invoices' => $mayMatchInvoice ? FakturPembelian::where('status', '!=', FakturPembelian::VOID)->latest()->limit(30)->get() : collect(),
             'creditAccounts' => $mayControlFinance ? BaganAkun::where('is_active', true)->where('is_postable', true)->whereIn('kategori_akun', ['LIABILITAS', 'ASET'])->orderBy('kode_akun')->get() : collect(),
+            'creditAccountDefault' => $mayControlFinance ? $this->akunLawanLandedCost() : null,
             'reversibleLpbs' => $mayControlFinance ? PenerimaanBarang::where('status', PenerimaanBarang::POSTED)->where(fn ($query) => $query->whereNull('document_type')->orWhere('document_type', '!=', 'SERVICE_BAP'))->whereDoesntHave('invoiceReceipts')->latest()->limit(20)->get() : collect(),
             'reversibleNpks' => $mayControlFinance ? PemakaianBarang::where('status', PemakaianBarang::POSTED)->latest()->limit(20)->get() : collect(),
         ]);

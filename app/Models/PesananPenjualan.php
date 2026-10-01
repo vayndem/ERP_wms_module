@@ -21,11 +21,14 @@ class PesananPenjualan extends Model
         'nomor', 'tanggal', 'pelanggan_id', 'sales_user_id', 'gudang_id', 'nomor_po_pelanggan',
         'is_ppn', 'tarif_ppn', 'total_dpp', 'total_ppn', 'grand_total',
         'status', 'keterangan', 'dibuat_oleh',
+        'plafon_dilampaui', 'alasan_plafon', 'plafon_disetujui_oleh', 'eksposur_saat_dibuat',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
         'is_ppn' => 'boolean',
+        'plafon_dilampaui' => 'boolean',
+        'eksposur_saat_dibuat' => 'decimal:2',
         'tarif_ppn' => 'decimal:4',
         'total_dpp' => 'decimal:2',
         'total_ppn' => 'decimal:2',
@@ -45,6 +48,11 @@ class PesananPenjualan extends Model
     public function sales(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sales_user_id');
+    }
+
+    public function penembusPlafon(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'plafon_disetujui_oleh');
     }
 
     public function details(): HasMany

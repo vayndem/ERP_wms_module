@@ -73,6 +73,25 @@ class KategoriBahan extends Model
         return $this->belongsTo(BaganAkun::class, 'coa_clearing_lpb_id');
     }
 
+    public function kategoriJasa(): HasMany
+    {
+        return $this->hasMany(KategoriJasa::class, 'kategori_bahan_id');
+    }
+
+    public function isKategoriJasa(): bool
+    {
+        return $this->kategoriJasa()->exists();
+    }
+
+    public static function idKategoriJasa(): array
+    {
+        return KategoriJasa::whereNotNull('kategori_bahan_id')
+            ->distinct()
+            ->pluck('kategori_bahan_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     public function coaBebanSelisihOpname(): BelongsTo
     {
         return $this->belongsTo(BaganAkun::class, 'coa_beban_selisih_opname_id');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePelangganRequest;
 use App\Models\Pelanggan;
+use App\Services\PlafonKreditService;
 use Illuminate\Http\Request;
 
 class PelangganController extends Controller
@@ -22,7 +23,10 @@ class PelangganController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('pelanggan.index', compact('pelanggan', 'cari'));
+        $plafon = app(PlafonKreditService::class);
+        $eksposur = $pelanggan->mapWithKeys(fn (Pelanggan $baris) => [$baris->id => $plafon->eksposur($baris)]);
+
+        return view('pelanggan.index', compact('pelanggan', 'cari', 'eksposur'));
     }
 
     public function create()

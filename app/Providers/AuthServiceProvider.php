@@ -24,6 +24,7 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('viewExecutiveDashboard', fn (User $user) => $user->isAccounting() || $user->isAccountingManager());
         Gate::define('viewProcurementAnalytics', fn (User $user) => $user->isPurchasing() || $user->isAccounting() || $user->isAccountingManager());
         Gate::define('viewKinerjaSales', fn (User $user) => $user->isPurchasing() || $user->isAccounting() || $user->isAccountingManager());
+        Gate::define('tembusPlafonKredit', fn (User $user) => $user->isSuperAdmin());
         Gate::define('viewPiutangAging', fn (User $user) => $user->isFinance() || $user->isAccounting() || $user->isAccountingManager());
     }
 }

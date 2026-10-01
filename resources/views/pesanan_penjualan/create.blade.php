@@ -63,6 +63,16 @@
                         <span class="label-text">Kena PPN</span>
                     </label>
                 </div>
+                @can('tembusPlafonKredit')
+                    <div class="form-control md:col-span-3">
+                        <label class="label">
+                            <span class="label-text">Alasan menembus plafon kredit</span>
+                            <span class="label-text-alt text-base-content/60">hanya diisi bila pesanan melewati plafon pelanggan</span>
+                        </label>
+                        <input type="text" name="alasan_plafon" value="{{ old('alasan_plafon') }}" maxlength="500"
+                            class="input input-bordered input-sm" placeholder="Contoh: disetujui direksi, pelanggan melunasi minggu ini">
+                    </div>
+                @endcan
             </div>
 
             <div class="mt-4 overflow-x-auto">

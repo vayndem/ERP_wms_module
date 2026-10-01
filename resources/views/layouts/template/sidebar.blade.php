@@ -174,6 +174,13 @@
                                     </a>
                                 </li>
                             @endcan
+                            @can('viewFinancialStatements')
+                                <li class="{{ request()->routeIs('laporan-pajak-djp.*') ? 'active' : '' }}">
+                                    <a href="{{ route('laporan-pajak-djp.index') }}" class="svg-icon">
+                                        <i class="fa-solid fa-file-export"></i><span>Data Pelaporan DJP</span>
+                                    </a>
+                                </li>
+                            @endcan
                             @can('controlInventoryFinance')
                                 <li class="{{ request()->routeIs('revaluasi-kurs.*') ? 'active' : '' }}">
                                     <a href="{{ route('revaluasi-kurs.index') }}" class="svg-icon">
@@ -456,6 +463,13 @@
                             @can('reconcile', App\Models\StokGudang::class)<li><a href="{{ route('rekonsiliasi-gudangs.index') }}"><span>Rekonsiliasi</span></a></li>@endcan
                             <li><a href="{{ route('wms-control.index') }}"><span>WMS Control Center</span></a></li>
                             <li><a href="{{ route('antrean-kerja.index') }}"><span>Antrean Kerja Saya</span></a></li>
+                            @can('viewAny', App\Models\PengirimanSubkontrak::class)
+                                <li class="{{ request()->routeIs('subkontrak.*') ? 'active' : '' }}">
+                                    <a href="{{ route('subkontrak.index') }}" class="svg-icon">
+                                        <i class="fa-solid fa-hand-holding-hand"></i><span>Subkontrak</span>
+                                    </a>
+                                </li>
+                            @endcan
                             @can('viewAny', App\Models\CrossDock::class)
                                 <li class="{{ request()->routeIs('cross-dock.*') ? 'active' : '' }}">
                                     <a href="{{ route('cross-dock.index') }}" class="svg-icon">

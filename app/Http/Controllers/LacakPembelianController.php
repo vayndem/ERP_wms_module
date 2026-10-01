@@ -90,6 +90,7 @@ class LacakPembelianController extends Controller
             ['key' => 'selisih_opname', 'label' => 'Selisih Opname', 'align' => 'right'],
             ['key' => 'terjual', 'label' => 'Terjual', 'align' => 'right'],
             ['key' => 'retur', 'label' => 'Retur', 'align' => 'right'],
+            ['key' => 'hilang_transit', 'label' => 'Hilang di Jalan', 'align' => 'right'],
             ['key' => 'tidak_terlacak', 'label' => 'Belum Terlacak', 'align' => 'right'],
         ];
     }
@@ -114,6 +115,7 @@ class LacakPembelianController extends Controller
             'selisih_opname' => $uang($row['selisih_opname']),
             'terjual' => $uang($row['terjual']),
             'retur' => $uang($row['retur']),
+            'hilang_transit' => $uang($row['hilang_transit']),
             'tidak_terlacak' => $uang($row['tidak_terlacak']),
         ]);
 
@@ -128,6 +130,7 @@ class LacakPembelianController extends Controller
             'selisih_opname' => $uang($data['total_selisih_opname']),
             'terjual' => $uang($data['total_terjual']),
             'retur' => $uang($data['total_retur']),
+            'hilang_transit' => $uang($data['total_hilang_transit']),
             'tidak_terlacak' => $uang($data['total_tidak_terlacak']),
         ])->values();
     }

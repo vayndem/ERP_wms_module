@@ -10,7 +10,7 @@ Warehouse • Procurement • Sales • Production • Finance • Accounting �
 [![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
 [![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com)
 [![Tailwind](https://img.shields.io/badge/Tailwind%20%2B%20daisyUI%20%2B%20Alpine-UI-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Tests](https://img.shields.io/badge/tests-261%20passed-22C55E?style=for-the-badge&logo=php&logoColor=white)](#-pengujian)
+[![Tests](https://img.shields.io/badge/tests-373%20passed-22C55E?style=for-the-badge&logo=php&logoColor=white)](#-pengujian)
 
 </div>
 
@@ -362,8 +362,8 @@ php artisan schedule:work
 
 <div align="center">
 
-![Tests](https://img.shields.io/badge/tests-261%20passed-22C55E?style=flat-square)
-![Assertions](https://img.shields.io/badge/assertions-4%2C622-38BDF8?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-373%20passed-22C55E?style=flat-square)
+![Assertions](https://img.shields.io/badge/assertions-5%2C309-38BDF8?style=flat-square)
 ![Case Sensitive](https://img.shields.io/badge/case--sensitivity-verified-A78BFA?style=flat-square)
 
 </div>

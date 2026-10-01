@@ -36,7 +36,8 @@
                         <tr>
                             <th>Kode</th><th>Nama</th><th>NPWP</th><th>Kontak</th>
                             <th class="text-end">Termin</th><th class="text-end">Plafon</th>
-                            <th class="text-end">Piutang Berjalan</th><th>Status</th><th class="text-end">Aksi</th>
+                            <th class="text-end">Piutang Berjalan</th><th class="text-end">Eksposur</th>
+                            <th class="text-end">Sisa Plafon</th><th>Status</th><th class="text-end">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -49,6 +50,15 @@
                                 <td class="text-end">{{ $baris->termin_hari }} hari</td>
                                 <td class="text-end">Rp {{ number_format($baris->plafon_kredit, 0, ',', '.') }}</td>
                                 <td class="text-end">Rp {{ number_format($baris->piutangBerjalan(), 0, ',', '.') }}</td>
+                                @php($hitung = $eksposur[$baris->id])
+                                <td class="text-end">Rp {{ number_format($hitung['total'], 0, ',', '.') }}</td>
+                                <td class="text-end {{ $hitung['sisa_plafon'] !== null && $hitung['sisa_plafon'] < 0 ? 'text-error font-semibold' : '' }}">
+                                    @if ($hitung['tanpa_batas'])
+                                        <span class="text-base-content/50">tanpa batas</span>
+                                    @else
+                                        Rp {{ number_format($hitung['sisa_plafon'], 0, ',', '.') }}
+                                    @endif
+                                </td>
                                 <td>
                                     <span class="badge {{ $baris->is_active ? 'badge-success' : 'badge-ghost' }}">{{ $baris->is_active ? 'Aktif' : 'Nonaktif' }}</span>
                                 </td>

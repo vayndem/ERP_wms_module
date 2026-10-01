@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DataPesanan;
 use App\Models\LayerPersediaan;
+use App\Models\Pelanggan;
 use App\Models\PesananPenjualan;
 use App\Models\PesananPenjualanDetail;
 use App\Models\SuratJalan;
@@ -21,11 +22,27 @@ class PenjualanService
         private DocumentNumberService $numbers,
         private DataPesananService $dataPesanan,
         private CrossDockService $crossDock,
+        private PlafonKreditService $plafon,
     ) {}
+
+    private function nilaiPesananBaru(array $data): float
+    {
+        $dpp = collect($data['details'] ?? [])->sum(
+            fn ($baris) => round((float) $baris['jumlah'], 6) * round((float) $baris['harga_satuan'], 2)
+        );
+
+        $tarif = (bool) ($data['is_ppn'] ?? true) ? (float) ($data['tarif_ppn'] ?? 11) : 0.0;
+
+        return round($dpp * (1 + $tarif / 100), 2);
+    }
 
     public function buatPesanan(array $data, User $user): PesananPenjualan
     {
         return DB::transaction(function () use ($data, $user) {
+            $pelanggan = Pelanggan::lockForUpdate()->findOrFail($data['pelanggan_id']);
+            $nilaiBaru = $this->nilaiPesananBaru($data);
+            $plafon = $this->plafon->periksa($pelanggan, $nilaiBaru, $user, $data['alasan_plafon'] ?? null);
+
             $pesanan = PesananPenjualan::create([
                 'nomor' => $this->numbers->external('SOP'),
                 'tanggal' => $data['tanggal'],
@@ -38,6 +55,10 @@ class PenjualanService
                 'status' => PesananPenjualan::OPEN,
                 'keterangan' => $data['keterangan'] ?? null,
                 'dibuat_oleh' => $user->id,
+                'plafon_dilampaui' => $plafon['dilampaui'],
+                'alasan_plafon' => $plafon['dilampaui'] ? trim((string) ($data['alasan_plafon'] ?? '')) : null,
+                'plafon_disetujui_oleh' => $plafon['dilampaui'] ? $user->id : null,
+                'eksposur_saat_dibuat' => $plafon['total'],
             ]);
 
             foreach ($data['details'] as $baris) {

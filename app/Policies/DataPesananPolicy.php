@@ -40,6 +40,11 @@ class DataPesananPolicy
         return $user->isProduction() && $pesanan->status === DataPesanan::DIRILIS;
     }
 
+    public function catatJamKerja(User $user, DataPesanan $pesanan): bool
+    {
+        return $user->isProduction() && $pesanan->menerimaBiaya();
+    }
+
     public function batalkan(User $user, DataPesanan $pesanan): bool
     {
         return ($user->isProduction() || $user->isPurchasing())

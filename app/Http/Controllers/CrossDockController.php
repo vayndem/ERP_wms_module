@@ -18,7 +18,7 @@ class CrossDockController extends Controller
         $this->authorize('viewAny', CrossDock::class);
 
         $gudangId = $request->integer('gudang_id') ?: null;
-        $gudangDiizinkan = $request->user()->accessibleGudangIds('receive');
+        $gudangDiizinkan = array_values($request->user()->accessibleGudangIds('receive'));
 
         $daftar = CrossDock::with(['bahan', 'gudang', 'pesananDetail.pesanan.pelanggan', 'penerimaanDetail'])
             ->when($gudangId, fn ($query) => $query->where('gudang_id', $gudangId))
@@ -28,10 +28,14 @@ class CrossDockController extends Controller
             ->withQueryString();
 
         return view('cross_dock.index', [
-            'saran' => $this->crossDock->saran($gudangId),
+            'saran' => $this->crossDock->saran($gudangId, $gudangDiizinkan),
             'daftar' => $daftar,
-            'gudang' => Gudang::where('jenis', Gudang::NORMAL)->orderBy('nama')->get(['id', 'nama']),
+            'gudang' => Gudang::where('jenis', Gudang::NORMAL)
+                ->whereIn('id', $gudangDiizinkan)
+                ->orderBy('nama')
+                ->get(['id', 'nama']),
             'gudangId' => $gudangId,
+            'tanpaGudang' => $gudangDiizinkan === [],
         ]);
     }
 

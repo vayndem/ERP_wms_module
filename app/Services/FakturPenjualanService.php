@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\FakturPenjualan;
 use App\Models\PenerimaanPembayaran;
+use App\Models\UangMukaPelanggan;
 use App\Models\SuratJalan;
 use App\Models\SuratJalanDetail;
 use App\Models\User;
@@ -141,9 +142,8 @@ class FakturPenjualanService
                 throw new RuntimeException('Nilai pembayaran harus lebih besar dari nol.');
             }
 
-            if ($jumlah > (float) $faktur->sisa_tagihan + 0.005) {
-                throw new RuntimeException('Nilai pembayaran melebihi sisa tagihan faktur.');
-            }
+            $terpakai = round(min($jumlah, (float) $faktur->sisa_tagihan), 2);
+            $kelebihan = round($jumlah - $terpakai, 2);
 
             $pembayaran = PenerimaanPembayaran::create([
                 'nomor' => $this->numbers->external('RCP'),
@@ -151,7 +151,8 @@ class FakturPenjualanService
                 'faktur_penjualan_id' => $faktur->id,
                 'pelanggan_id' => $faktur->pelanggan_id,
                 'coa_kas_bank_id' => $data['coa_kas_bank_id'],
-                'jumlah' => $jumlah,
+                'jumlah' => $terpakai,
+                'jumlah_uang_muka' => $kelebihan,
                 'referensi' => $data['referensi'] ?? null,
                 'status' => PenerimaanPembayaran::POSTED,
                 'dibuat_oleh' => $user->id,
@@ -159,6 +160,81 @@ class FakturPenjualanService
 
             $jurnal = $this->akuntansi->postPenerimaanPembayaran($pembayaran);
             $pembayaran->update(['journal_id' => $jurnal->id]);
+
+            if ($kelebihan > 0) {
+                UangMukaPelanggan::create([
+                    'nomor' => $this->numbers->external('UMP'),
+                    'tanggal' => $data['tanggal'],
+                    'pelanggan_id' => $faktur->pelanggan_id,
+                    'penerimaan_pembayaran_id' => $pembayaran->id,
+                    'jumlah' => $kelebihan,
+                    'sisa' => $kelebihan,
+                    'status' => UangMukaPelanggan::AKTIF,
+                    'keterangan' => "Kelebihan bayar faktur {$faktur->nomor}",
+                    'dibuat_oleh' => $user->id,
+                ]);
+            }
+
+            $this->sinkronSisaTagihan($faktur);
+
+            return $pembayaran->fresh();
+        });
+    }
+
+    public function gunakanUangMuka(FakturPenjualan $faktur, UangMukaPelanggan $uangMuka, float $jumlah, $tanggal, User $user): PenerimaanPembayaran
+    {
+        return DB::transaction(function () use ($faktur, $uangMuka, $jumlah, $tanggal, $user) {
+            $faktur = FakturPenjualan::lockForUpdate()->findOrFail($faktur->id);
+            $uangMuka = UangMukaPelanggan::lockForUpdate()->findOrFail($uangMuka->id);
+
+            if (!$faktur->isTertagih()) {
+                throw new RuntimeException('Faktur ini tidak dalam status yang dapat menerima pembayaran.');
+            }
+
+            if ((int) $uangMuka->pelanggan_id !== (int) $faktur->pelanggan_id) {
+                throw new RuntimeException('Uang muka ini milik pelanggan lain.');
+            }
+
+            if (!$uangMuka->isAktif()) {
+                throw new RuntimeException('Uang muka ini sudah habis terpakai.');
+            }
+
+            $jumlah = round($jumlah, 2);
+
+            if ($jumlah <= 0) {
+                throw new RuntimeException('Nilai pemakaian uang muka harus lebih besar dari nol.');
+            }
+
+            if ($jumlah > (float) $uangMuka->sisa + 0.005) {
+                throw new RuntimeException('Nilai pemakaian melebihi sisa uang muka.');
+            }
+
+            if ($jumlah > (float) $faktur->sisa_tagihan + 0.005) {
+                throw new RuntimeException('Nilai pemakaian melebihi sisa tagihan faktur.');
+            }
+
+            $pembayaran = PenerimaanPembayaran::create([
+                'nomor' => $this->numbers->external('RCP'),
+                'tanggal' => $tanggal,
+                'faktur_penjualan_id' => $faktur->id,
+                'pelanggan_id' => $faktur->pelanggan_id,
+                'coa_kas_bank_id' => null,
+                'uang_muka_id' => $uangMuka->id,
+                'jumlah' => $jumlah,
+                'jumlah_uang_muka' => 0,
+                'referensi' => "Uang muka {$uangMuka->nomor}",
+                'status' => PenerimaanPembayaran::POSTED,
+                'dibuat_oleh' => $user->id,
+            ]);
+
+            $jurnal = $this->akuntansi->postPenerimaanPembayaran($pembayaran);
+            $pembayaran->update(['journal_id' => $jurnal->id]);
+
+            $sisa = round((float) $uangMuka->sisa - $jumlah, 2);
+            $uangMuka->update([
+                'sisa' => $sisa,
+                'status' => $sisa > 0.005 ? UangMukaPelanggan::AKTIF : UangMukaPelanggan::TERPAKAI,
+            ]);
 
             $this->sinkronSisaTagihan($faktur);
 

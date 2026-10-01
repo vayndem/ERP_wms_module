@@ -10,6 +10,15 @@ use App\Models\PusatKerja;
 use App\Models\StokGudang;
 use App\Models\Supplier;
 use App\Models\TransferGudang;
+use App\Models\AccountingSetting;
+use App\Models\BiayaTambahan;
+use App\Models\LayerPersediaan;
+use App\Services\LandedCostService;
+use App\Models\DataPesanan;
+use App\Services\SerapanProduksiService;
+use App\Models\PesananPenjualan;
+use App\Models\PesananPenjualanDetail;
+use App\Services\DataPesananService;
 use App\Models\User;
 use App\Services\DocumentNumberService;
 use App\Services\PengeluaranBarangService;
@@ -17,7 +26,9 @@ use App\Services\RevaluasiKursService;
 use App\Services\RoutingProduksiService;
 use App\Services\TransferGudangService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 
@@ -39,6 +50,95 @@ class OperasiGudangDemoSeeder extends Seeder
         $this->jalankan('Barang keluar dan titipan', fn () => $this->kustodiBarang($gudangUser));
         $this->jalankan('Routing produksi', fn () => $this->routingProduksi($produksiUser));
         $this->jalankan('Revaluasi kurs', fn () => $this->revaluasiKurs($akuntansiUser));
+        $this->jalankan('Landed cost', fn () => $this->landedCost($akuntansiUser));
+        $this->jalankan('Serapan jam kerja', fn () => $this->serapanJamKerja($produksiUser));
+    }
+
+    private function landedCost(User $user): void
+    {
+        Auth::setUser($user);
+
+        $layer = LayerPersediaan::where('stock_status', 'AVAILABLE')
+            ->where('remaining_quantity', '>', 0)
+            ->orderBy('id')
+            ->first();
+
+        if (!$layer) {
+            throw new RuntimeException('tidak ada layer aktif untuk dibebani biaya tambahan.');
+        }
+
+        if (BiayaTambahan::where('status', 'POSTED')->exists()) {
+            return;
+        }
+
+        $biaya = BiayaTambahan::create([
+            'number' => app(DocumentNumberService::class)->internal('BTB', 'LC'),
+            'date' => today()->subDays(3)->toDateString(),
+            'description' => 'Ongkos angkut dan bongkar muat pengiriman supplier',
+            'total_amount' => 150000,
+            'allocation_basis' => 'VALUE',
+            'credit_coa_id' => AccountingSetting::accountId(AccountingSetting::BIAYA_MASIH_HARUS_DIBAYAR),
+            'status' => 'DRAFT',
+            'created_by' => $user->id,
+        ]);
+
+        $service = app(LandedCostService::class);
+        $service->allocate($biaya, [$layer->id]);
+        $service->post($biaya);
+
+        $this->command?->info('Landed cost: ongkos angkut dikapitalisasi ke layer persediaan dan dibebankan ke Biaya Masih Harus Dibayar.');
+    }
+
+    private function serapanJamKerja(User $user): void
+    {
+        Auth::setUser($user);
+
+        $pusat = PusatKerja::where('status', PusatKerja::AKTIF)->orderBy('kode')->get();
+
+        if ($pusat->isEmpty()) {
+            throw new RuntimeException('belum ada pusat kerja untuk diberi tarif.');
+        }
+
+        foreach ($pusat as $index => $satu) {
+            $satu->update([
+                'tarif_tenaga_kerja_per_jam' => [45000, 60000, 35000][$index % 3],
+                'tarif_overhead_per_jam' => [15000, 25000, 12000][$index % 3],
+            ]);
+        }
+
+        $pesanan = DataPesanan::berjalan()->orderBy('id')->first() ?? $this->perintahKerjaBerjalan($user);
+
+        if (!$pesanan) {
+            throw new RuntimeException('tidak ada baris pesanan penjualan yang bisa dijadikan perintah kerja berjalan.');
+        }
+
+        $service = app(SerapanProduksiService::class);
+        $service->catat($pesanan, $pusat->first(), ['tanggal' => today()->subDays(4)->toDateString(), 'jam' => 6, 'keterangan' => 'Potong dan jahit'], $user);
+        $service->catat($pesanan, $pusat->last(), ['tanggal' => today()->subDays(2)->toDateString(), 'jam' => 3.5, 'keterangan' => 'Finishing dan QC produksi'], $user);
+
+        $this->command?->info('Serapan jam kerja: tarif pusat kerja diisi dan dua catatan jam diserap ke barang dalam proses.');
+    }
+
+    private function perintahKerjaBerjalan(User $user): ?DataPesanan
+    {
+        $detail = PesananPenjualanDetail::whereHas('pesanan', fn ($query) => $query->where('status', PesananPenjualan::OPEN))
+            ->whereNotIn('id', DataPesanan::whereNotNull('pesanan_penjualan_detail_id')->pluck('pesanan_penjualan_detail_id'))
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$detail) {
+            return null;
+        }
+
+        $service = app(DataPesananService::class);
+
+        $pesanan = $service->buat($detail, [
+            'tanggal' => today()->subDays(5)->toDateString(),
+            'jumlah_rencana' => max(1, (float) $detail->jumlah),
+            'keterangan' => 'Perintah kerja berjalan untuk demo serapan jam kerja.',
+        ], $user);
+
+        return $service->rilis($pesanan);
     }
 
     private function jalankan(string $label, callable $skenario): void
@@ -57,30 +157,63 @@ class OperasiGudangDemoSeeder extends Seeder
         $asal = Gudang::where('kode', 'GDG-UTAMA')->firstOrFail();
         $tujuan = Gudang::where('kode', 'GDG-PRODUKSI')->firstOrFail();
 
-        $tersedia = StokGudang::where('gudang_id', $asal->id)
-            ->whereRaw('stok_tersedia - stok_direservasi >= 4')
-            ->orderByDesc('stok_tersedia')
-            ->get();
+        $tanggalPertama = now()->subDays(12);
+        $tersedia = $this->bahanSiapTransfer($asal, $tanggalPertama, 2);
 
         if ($tersedia->count() < 2) {
-            throw new RuntimeException('stok Gudang Utama tidak cukup untuk tiga skenario transfer.');
+            throw new RuntimeException('tidak ada dua bahan yang layernya cukup tua untuk tiga skenario transfer.');
         }
 
         $service = app(TransferGudangService::class);
 
-        $diterima = $this->buatTransfer($asal, $tujuan, $tersedia[0]->bahan_id, 2, now()->subDays(12), $user);
+        $diterima = $this->buatTransfer($asal, $tujuan, $tersedia[0], 1, $tanggalPertama, $user);
         $service->konfirmasi($diterima);
         $service->terima($diterima->fresh(), [], 'Diterima lengkap sesuai surat jalan.');
 
-        $kurang = $this->buatTransfer($asal, $tujuan, $tersedia[0]->bahan_id, 2, now()->subDays(9), $user);
+        $kurang = $this->buatTransfer($asal, $tujuan, $tersedia[0], 2, now()->subDays(9), $user);
         $service->konfirmasi($kurang);
         $detailKurang = $kurang->fresh('details')->details->first();
         $service->terima($kurang->fresh(), [$detailKurang->id => 1], 'Satu unit tidak sampai, dicatat sebagai selisih transfer.');
 
-        $perjalanan = $this->buatTransfer($asal, $tujuan, $tersedia[1]->bahan_id, 2, now()->subDays(6), $user);
+        $perjalanan = $this->buatTransfer($asal, $tujuan, $tersedia[1], 1, now()->subDays(6), $user);
         $service->konfirmasi($perjalanan);
 
         $this->command?->info('Transfer gudang: satu diterima lengkap, satu kurang terima, satu masih dalam perjalanan.');
+    }
+
+    private function bahanSiapTransfer(Gudang $gudang, $tanggal, float $minimal): Collection
+    {
+        $reservasi = StokGudang::where('gudang_id', $gudang->id)->pluck('stok_direservasi', 'bahan_id');
+
+        $kandidat = LayerPersediaan::where('gudang_id', $gudang->id)
+            ->where('stock_status', 'AVAILABLE')
+            ->where('remaining_quantity', '>', 0)
+            ->whereDate('transaction_date', '<=', $tanggal)
+            ->selectRaw('bahan_id, SUM(remaining_quantity) as tersedia')
+            ->groupBy('bahan_id')
+            ->orderByDesc('tersedia')
+            ->get()
+            ->filter(fn ($baris) => (float) $baris->tersedia - (float) ($reservasi[$baris->bahan_id] ?? 0) >= $minimal)
+            ->pluck('bahan_id')
+            ->values();
+
+        $dilindungi = $this->bahanPenopangReturPascaInvoice();
+        $aman = $kandidat->reject(fn ($bahanId) => $dilindungi->contains($bahanId))->values();
+
+        return $aman->count() >= 2 ? $aman : $kandidat;
+    }
+
+    private function bahanPenopangReturPascaInvoice(): Collection
+    {
+        return DB::table('wms_layer_persediaan as l')
+            ->join('wms_penerimaan_barang_detail as d', 'd.id', '=', 'l.source_id')
+            ->join('wms_penerimaan_barang as lpb', 'lpb.id_lpb', '=', 'd.id_lpb')
+            ->join('wms_faktur_pembelian as f', 'f.no_invoice', '=', 'lpb.no_invoice')
+            ->where('l.source_type', 'LPB_DETAIL')
+            ->where('l.remaining_quantity', '>', 0)
+            ->where('f.sisa_tagihan', '>', 0)
+            ->distinct()
+            ->pluck('l.bahan_id');
     }
 
     private function buatTransfer(Gudang $asal, Gudang $tujuan, int $bahanId, float $jumlah, $tanggal, User $user): TransferGudang

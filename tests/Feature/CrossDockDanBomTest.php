@@ -288,6 +288,7 @@ class CrossDockDanBomTest extends TestCase
     {
         $user = User::factory()->create(['type' => User::ROLE_PRODUCTION, 'is_active' => true]);
         $produk = Bahan::firstOrFail();
+        Bom::where('bahan_id', $produk->id)->update(['status' => Bom::NONAKTIF]);
         $komponen = Bahan::whereKeyNot($produk->id)->firstOrFail();
         $service = app(BomService::class);
 
@@ -299,20 +300,54 @@ class CrossDockDanBomTest extends TestCase
             'details' => [['bahan_id' => $komponen->id, 'jumlah' => 1]],
         ], $user);
 
-        $kedua = $service->buat([
+        $kedua = [
             'kode' => 'BOM-B-' . random_int(100, 999),
             'nama' => 'BOM kedua',
             'bahan_id' => $produk->id,
             'versi' => 'B' . random_int(10, 99),
             'details' => [['bahan_id' => $komponen->id, 'jumlah' => 2]],
-        ], $user);
+        ];
 
-        $service->ubahStatus($kedua, Bom::NONAKTIF);
+        try {
+            $service->buat($kedua, $user);
+            $this->fail('Membuat BOM kedua untuk bahan yang sudah punya BOM aktif seharusnya ditolak.');
+        } catch (RuntimeException) {
+        }
+
+        $this->assertSame(
+            1,
+            Bom::aktif()->where('bahan_id', $produk->id)->count(),
+            'Satu bahan hanya boleh punya satu BOM aktif.'
+        );
+
+        $service->ubahStatus($pertama, Bom::NONAKTIF);
+        $penerus = $service->buat($kedua, $user);
+
+        $this->assertTrue($penerus->isAktif());
 
         $this->expectException(RuntimeException::class);
-        $service->ubahStatus($kedua, Bom::AKTIF);
+        $service->ubahStatus($pertama, Bom::AKTIF);
+    }
 
-        $this->assertTrue($pertama->fresh()->isAktif());
+    public function test_cross_dock_suggestions_never_leak_a_warehouse_the_operator_cannot_reach(): void
+    {
+        $stok = $this->stok();
+        $lain = Gudang::where('jenis', Gudang::NORMAL)->whereKeyNot($stok->gudang_id)->firstOrFail();
+        $operator = $this->operator($lain->id);
+
+        $saran = app(CrossDockService::class)->saran(null, $operator->accessibleGudangIds('receive'));
+
+        $this->assertTrue(
+            $saran->every(fn ($baris) => (int) $baris['gudang_id'] === (int) $lain->id),
+            'Saran cross dock hanya boleh memuat gudang yang boleh diakses operator.'
+        );
+
+        $tanpaGudang = User::factory()->create(['type' => User::ROLE_PRODUCTION, 'is_active' => true]);
+
+        $this->assertTrue(
+            app(CrossDockService::class)->saran(null, $tanpaGudang->accessibleGudangIds('receive'))->isEmpty(),
+            'Operator tanpa pembagian gudang tidak boleh menerima saran apa pun.'
+        );
     }
 
     public function test_usage_variance_compares_actual_consumption_against_the_standard(): void

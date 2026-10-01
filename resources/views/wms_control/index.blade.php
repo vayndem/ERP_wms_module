@@ -459,7 +459,7 @@
                         </select>
                         <select name="credit_coa_id" class="select select-bordered" required>
                             @foreach ($creditAccounts as $a)
-                                <option value="{{ $a->id }}">{{ $a->kode_akun }} {{ $a->nama_akun }}</option>
+                                <option value="{{ $a->id }}" @selected(($creditAccountDefault ?? null) === $a->id)>{{ $a->kode_akun }} {{ $a->nama_akun }}</option>
                             @endforeach
                         </select>
                         <select name="layer_ids[]" class="select select-bordered md:col-span-6" multiple size="6" required>

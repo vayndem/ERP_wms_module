@@ -33,12 +33,15 @@ Route::middleware('auth')->group(function () {
     Route::get('data-pesanan/{pesanan}', [DataPesananController::class, 'show'])->name('data-pesanan.show');
     Route::post('data-pesanan/{pesanan}/rilis', [DataPesananController::class, 'rilis'])->name('data-pesanan.rilis');
     Route::post('data-pesanan/{pesanan}/selesaikan', [DataPesananController::class, 'selesaikan'])->name('data-pesanan.selesaikan');
+    Route::post('data-pesanan/{pesanan}/jam-kerja', [DataPesananController::class, 'catatJamKerja'])->name('data-pesanan.jam-kerja');
+    Route::delete('data-pesanan/{pesanan}/jam-kerja/{jamKerja}', [DataPesananController::class, 'hapusJamKerja'])->name('data-pesanan.jam-kerja.hapus');
     Route::post('data-pesanan/{pesanan}/batalkan', [DataPesananController::class, 'batalkan'])->name('data-pesanan.batalkan');
 
     Route::get('faktur-penjualan', [FakturPenjualanController::class, 'index'])->name('faktur-penjualan.index');
     Route::get('faktur-penjualan/{faktur}', [FakturPenjualanController::class, 'show'])->name('faktur-penjualan.show');
     Route::post('faktur-penjualan/{faktur}/post', [FakturPenjualanController::class, 'post'])->name('faktur-penjualan.post');
     Route::post('faktur-penjualan/{faktur}/bayar', [FakturPenjualanController::class, 'bayar'])->name('faktur-penjualan.bayar');
+    Route::post('faktur-penjualan/{faktur}/uang-muka', [FakturPenjualanController::class, 'pakaiUangMuka'])->name('faktur-penjualan.uang-muka');
     Route::delete('faktur-penjualan/{faktur}', [FakturPenjualanController::class, 'destroy'])->name('faktur-penjualan.destroy');
 
     Route::get('piutang-aging', [PiutangAgingController::class, 'index'])->name('piutang-aging.index');

@@ -32,6 +32,10 @@ class AccountingSetting extends Model
     public const BEBAN_POKOK_PENJUALAN = 'BEBAN_POKOK_PENJUALAN';
     public const BARANG_DALAM_PROSES = 'BARANG_DALAM_PROSES';
     public const PERSEDIAAN_DALAM_PERJALANAN = 'PERSEDIAAN_DALAM_PERJALANAN';
+    public const BIAYA_MASIH_HARUS_DIBAYAR = 'BIAYA_MASIH_HARUS_DIBAYAR';
+    public const UANG_MUKA_PELANGGAN = 'UANG_MUKA_PELANGGAN';
+    public const BEBAN_TENAGA_KERJA_DISERAP = 'BEBAN_TENAGA_KERJA_DISERAP';
+    public const BEBAN_OVERHEAD_DISERAP = 'BEBAN_OVERHEAD_DISERAP';
     public const RUGI_PEMBATALAN_PRODUKSI = 'RUGI_PEMBATALAN_PRODUKSI';
     public const LABA_SELISIH_KURS = 'LABA_SELISIH_KURS';
     public const RUGI_SELISIH_KURS = 'RUGI_SELISIH_KURS';
@@ -77,6 +81,10 @@ class AccountingSetting extends Model
             self::BEBAN_POKOK_PENJUALAN => [['BEBAN', 'DEBIT']],
             self::BARANG_DALAM_PROSES => [['ASET', 'DEBIT']],
             self::PERSEDIAAN_DALAM_PERJALANAN => [['ASET', 'DEBIT']],
+            self::BIAYA_MASIH_HARUS_DIBAYAR => [['LIABILITAS', 'KREDIT']],
+            self::UANG_MUKA_PELANGGAN => [['LIABILITAS', 'KREDIT']],
+            self::BEBAN_TENAGA_KERJA_DISERAP => [['BEBAN', 'KREDIT']],
+            self::BEBAN_OVERHEAD_DISERAP => [['BEBAN', 'KREDIT']],
             self::RUGI_PEMBATALAN_PRODUKSI => [['BEBAN', 'DEBIT']],
             self::LABA_SELISIH_KURS => [['PENDAPATAN', 'KREDIT']],
             self::RUGI_SELISIH_KURS => [['BEBAN', 'DEBIT']],

@@ -100,6 +100,10 @@ class DatabaseSeeder extends Seeder
             ['kode_akun' => '5401', 'nama_akun' => 'Beban Pokok Penjualan', 'kategori_akun' => 'BEBAN', 'posisi_normal' => 'DEBIT'],
             ['kode_akun' => '1303', 'nama_akun' => 'Barang Dalam Proses Produksi', 'kategori_akun' => 'ASET', 'posisi_normal' => 'DEBIT'],
             ['kode_akun' => '1304', 'nama_akun' => 'Persediaan Dalam Perjalanan', 'kategori_akun' => 'ASET', 'posisi_normal' => 'DEBIT'],
+            ['kode_akun' => '2111', 'nama_akun' => 'Biaya Masih Harus Dibayar', 'kategori_akun' => 'LIABILITAS', 'posisi_normal' => 'KREDIT'],
+            ['kode_akun' => '2112', 'nama_akun' => 'Uang Muka Pelanggan', 'kategori_akun' => 'LIABILITAS', 'posisi_normal' => 'KREDIT'],
+            ['kode_akun' => '5203', 'nama_akun' => 'Beban Tenaga Kerja Langsung Diserap', 'kategori_akun' => 'BEBAN', 'posisi_normal' => 'KREDIT'],
+            ['kode_akun' => '5204', 'nama_akun' => 'Beban Overhead Pabrik Diserap', 'kategori_akun' => 'BEBAN', 'posisi_normal' => 'KREDIT'],
         ];
 
         foreach ($coas as $coa) {
@@ -136,6 +140,10 @@ class DatabaseSeeder extends Seeder
             AccountingSetting::BEBAN_POKOK_PENJUALAN => '5401',
             AccountingSetting::BARANG_DALAM_PROSES => '1303',
             AccountingSetting::PERSEDIAAN_DALAM_PERJALANAN => '1304',
+            AccountingSetting::BIAYA_MASIH_HARUS_DIBAYAR => '2111',
+            AccountingSetting::UANG_MUKA_PELANGGAN => '2112',
+            AccountingSetting::BEBAN_TENAGA_KERJA_DISERAP => '5203',
+            AccountingSetting::BEBAN_OVERHEAD_DISERAP => '5204',
             AccountingSetting::RUGI_PEMBATALAN_PRODUKSI => '5308',
             AccountingSetting::LABA_SELISIH_KURS => '4204',
             AccountingSetting::RUGI_SELISIH_KURS => '5303',
@@ -206,6 +214,7 @@ class DatabaseSeeder extends Seeder
         $gudangProduksi = Gudang::updateOrCreate(['kode' => 'GDG-PRODUKSI'], ['nama' => 'Gudang Produksi', 'jenis' => Gudang::NORMAL, 'aktif' => true, 'boleh_penerimaan' => false, 'boleh_npk' => true, 'boleh_transfer' => true, 'boleh_opname' => true]);
         Gudang::updateOrCreate(['kode' => 'GDG-CONSIDER'], ['nama' => 'Gudang Consider', 'jenis' => Gudang::CONSIDER, 'aktif' => true, 'boleh_penerimaan' => false, 'boleh_npk' => false, 'boleh_transfer' => true, 'boleh_opname' => true]);
         Gudang::updateOrCreate(['kode' => 'GDG-RUSAK'], ['nama' => 'Gudang Rusak', 'jenis' => Gudang::RUSAK, 'aktif' => true, 'boleh_penerimaan' => false, 'boleh_npk' => false, 'boleh_transfer' => false, 'boleh_opname' => true]);
+        Gudang::updateOrCreate(['kode' => 'GDG-SUBKONTRAK'], ['nama' => 'Gudang Subkontrak', 'jenis' => Gudang::NORMAL, 'aktif' => true, 'boleh_penerimaan' => true, 'boleh_npk' => false, 'boleh_transfer' => true, 'boleh_opname' => true]);
 
         $suppliers = [
             [

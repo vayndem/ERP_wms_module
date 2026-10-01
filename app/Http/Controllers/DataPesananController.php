@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SelesaikanDataPesananRequest;
 use App\Http\Requests\StoreDataPesananRequest;
 use App\Models\DataPesanan;
+use App\Services\SerapanProduksiService;
+use App\Models\PusatKerja;
+use App\Models\JamKerjaProduksi;
+use App\Http\Requests\StoreJamKerjaProduksiRequest;
 use App\Models\Gudang;
 use App\Models\PesananPenjualan;
 use App\Models\PesananPenjualanDetail;
@@ -70,7 +74,46 @@ class DataPesananController extends Controller
 
         $pesanan->load(['pesananPenjualan.pelanggan', 'pesananDetail.bahan', 'bahanHasil', 'gudang', 'biaya', 'pemakaian']);
 
-        return view('data_pesanan.show', compact('pesanan'));
+        return view('data_pesanan.show', [
+            'pesanan' => $pesanan,
+            'serapan' => app(SerapanProduksiService::class)->ringkasan($pesanan),
+            'pusatKerja' => PusatKerja::where('status', PusatKerja::AKTIF)->orderBy('kode')->get(),
+        ]);
+    }
+
+    public function catatJamKerja(StoreJamKerjaProduksiRequest $request, DataPesanan $pesanan)
+    {
+        $data = $request->validated();
+
+        try {
+            app(SerapanProduksiService::class)->catat(
+                $pesanan,
+                PusatKerja::findOrFail($data['pusat_kerja_id']),
+                $data,
+                $request->user()
+            );
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['produksi' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Jam kerja diserap ke barang dalam proses perintah kerja ini.');
+    }
+
+    public function hapusJamKerja(DataPesanan $pesanan, JamKerjaProduksi $jamKerja)
+    {
+        $this->authorize('catatJamKerja', $pesanan);
+
+        if ((int) $jamKerja->data_pesanan_id !== (int) $pesanan->id) {
+            abort(404);
+        }
+
+        try {
+            app(SerapanProduksiService::class)->batalkan($jamKerja);
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['produksi' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Serapan jam kerja ditarik kembali dari barang dalam proses.');
     }
 
     public function rilis(Request $request, DataPesanan $pesanan)

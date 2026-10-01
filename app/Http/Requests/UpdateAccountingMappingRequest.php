@@ -5,9 +5,26 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\BaganAkun;
+use App\Models\KategoriBahan;
 
 class UpdateAccountingMappingRequest extends FormRequest
 {
+    private const ATURAN_KATEGORI_BARANG = [
+        'coa_persediaan_id' => [['ASET', 'DEBIT']],
+        'coa_beban_id' => [['BEBAN', 'DEBIT']],
+        'coa_clearing_lpb_id' => [['LIABILITAS', 'KREDIT']],
+        'coa_beban_selisih_opname_id' => [['BEBAN', 'DEBIT']],
+        'coa_koreksi_opname_id' => [['PENDAPATAN', 'KREDIT']],
+    ];
+
+    private const ATURAN_KATEGORI_JASA = [
+        'coa_persediaan_id' => [['ASET', 'DEBIT'], ['BEBAN', 'DEBIT']],
+        'coa_beban_id' => [['BEBAN', 'DEBIT'], ['ASET', 'DEBIT']],
+        'coa_clearing_lpb_id' => [['LIABILITAS', 'KREDIT']],
+        'coa_beban_selisih_opname_id' => [['BEBAN', 'DEBIT']],
+        'coa_koreksi_opname_id' => [['PENDAPATAN', 'KREDIT']],
+    ];
+
     public function authorize(): bool
     {
         return $this->user()?->can('updateMapping', BaganAkun::class) ?? false;
@@ -67,20 +84,26 @@ class UpdateAccountingMappingRequest extends FormRequest
                     $validator->errors()->add("global.{$key}", "Kategori/posisi normal akun {$key} tidak sesuai.");
                 }
             }
+            $kategoriJasa = KategoriBahan::idKategoriJasa();
+
             foreach ($this->input('categories', []) as $id => $mapping) {
-                foreach (
-                    [
-                        'coa_persediaan_id' => ['ASET', 'DEBIT'],
-                        'coa_beban_id' => ['BEBAN', 'DEBIT'],
-                        'coa_clearing_lpb_id' => ['LIABILITAS', 'KREDIT'],
-                        'coa_beban_selisih_opname_id' => ['BEBAN', 'DEBIT'],
-                        'coa_koreksi_opname_id' => ['PENDAPATAN', 'KREDIT'],
-                    ] as $field => $rule
-                ) {
+                $aturan = in_array((int) $id, $kategoriJasa, true)
+                    ? self::ATURAN_KATEGORI_JASA
+                    : self::ATURAN_KATEGORI_BARANG;
+
+                foreach ($aturan as $field => $pasangan) {
                     $coa = BaganAkun::find($mapping[$field] ?? null);
-                    if ($coa && ($coa->kategori_akun !== $rule[0] || $coa->posisi_normal !== $rule[1])) {
-                        $validator->errors()->add("categories.{$id}.{$field}", 'Kategori atau posisi normal akun tidak sesuai dengan perannya.');
+
+                    if (!$coa || $coa->isUsableFor($pasangan)) {
+                        continue;
                     }
+
+                    $validator->errors()->add(
+                        "categories.{$id}.{$field}",
+                        in_array((int) $id, $kategoriJasa, true)
+                            ? 'Akun tidak sesuai perannya pada kategori jasa.'
+                            : 'Kategori atau posisi normal akun tidak sesuai dengan perannya.'
+                    );
                 }
             }
         }];

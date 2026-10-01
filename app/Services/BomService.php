@@ -13,6 +13,10 @@ use RuntimeException;
 
 class BomService
 {
+    private ?Collection $bomAktif = null;
+    private ?Collection $pemakaianTerkumpul = null;
+    private array $hargaPerGudang = [];
+
     public function buat(array $data, User $user): Bom
     {
         return DB::transaction(function () use ($data, $user) {
@@ -42,6 +46,8 @@ class BomService
                 throw new RuntimeException('Jumlah hasil BOM harus lebih besar dari nol.');
             }
 
+            $this->pastikanBelumPunyaBomAktif((int) $data['bahan_id']);
+
             $bom = Bom::create([
                 'kode' => $data['kode'],
                 'nama' => $data['nama'],
@@ -54,6 +60,7 @@ class BomService
             ]);
 
             $komponen->each(fn ($baris) => $bom->details()->create($baris));
+            $this->bomAktif = null;
 
             return $bom->fresh('details.bahan');
         });
@@ -66,19 +73,25 @@ class BomService
         }
 
         if ($status === Bom::AKTIF) {
-            $bentrok = Bom::aktif()
-                ->where('bahan_id', $bom->bahan_id)
-                ->whereKeyNot($bom->id)
-                ->exists();
-
-            if ($bentrok) {
-                throw new RuntimeException('Bahan ini sudah punya BOM aktif. Nonaktifkan yang lama lebih dulu.');
-            }
+            $this->pastikanBelumPunyaBomAktif((int) $bom->bahan_id, (int) $bom->id);
         }
 
         $bom->update(['status' => $status]);
+        $this->bomAktif = null;
 
         return $bom->fresh();
+    }
+
+    private function pastikanBelumPunyaBomAktif(int $bahanId, ?int $kecualiBomId = null): void
+    {
+        $bentrok = Bom::aktif()
+            ->where('bahan_id', $bahanId)
+            ->when($kecualiBomId, fn ($query) => $query->whereKeyNot($kecualiBomId))
+            ->exists();
+
+        if ($bentrok) {
+            throw new RuntimeException('Bahan ini sudah punya BOM aktif. Nonaktifkan yang lama lebih dulu.');
+        }
     }
 
     public function hapus(Bom $bom): void
@@ -89,14 +102,18 @@ class BomService
 
         $bom->details()->delete();
         $bom->delete();
+        $this->bomAktif = null;
     }
 
     public function bomUntuk(DataPesanan $pesanan): ?Bom
     {
-        return Bom::aktif()
+        $this->bomAktif ??= Bom::aktif()
             ->with('details.bahan')
-            ->where('bahan_id', $pesanan->bahan_hasil_id)
-            ->first();
+            ->orderBy('id')
+            ->get()
+            ->keyBy('bahan_id');
+
+        return $this->bomAktif->get($pesanan->bahan_hasil_id);
     }
 
     public function varians(DataPesanan $pesanan): array
@@ -167,11 +184,15 @@ class BomService
 
     public function ringkasan(?int $limit = 50): Collection
     {
-        return DataPesanan::with('bahanHasil')
+        $pesananList = DataPesanan::with('bahanHasil')
             ->whereNotIn('status', [DataPesanan::DIBATALKAN])
             ->orderByDesc('id')
             ->limit($limit)
-            ->get()
+            ->get();
+
+        $this->muatPemakaian($pesananList->pluck('id')->all());
+
+        return $pesananList
             ->map(function (DataPesanan $pesanan) {
                 $varians = $this->varians($pesanan);
 
@@ -236,12 +257,35 @@ class BomService
         ];
     }
 
+    private function muatPemakaian(array $pesananIds): void
+    {
+        $this->pemakaianTerkumpul = $pesananIds === []
+            ? collect()
+            : PemakaianBarang::with('barang')
+                ->whereIn('data_pesanan_id', $pesananIds)
+                ->where('status', 'POSTED')
+                ->get()
+                ->groupBy('data_pesanan_id')
+                ->map(fn (Collection $grup) => $this->rangkumPemakaian($grup));
+    }
+
     private function pemakaianAktual(DataPesanan $pesanan): Collection
     {
-        return PemakaianBarang::with('barang')
-            ->where('data_pesanan_id', $pesanan->id)
-            ->where('status', 'POSTED')
-            ->get()
+        if ($this->pemakaianTerkumpul !== null) {
+            return $this->pemakaianTerkumpul->get($pesanan->id, collect());
+        }
+
+        return $this->rangkumPemakaian(
+            PemakaianBarang::with('barang')
+                ->where('data_pesanan_id', $pesanan->id)
+                ->where('status', 'POSTED')
+                ->get()
+        );
+    }
+
+    private function rangkumPemakaian(Collection $pemakaian): Collection
+    {
+        return $pemakaian
             ->groupBy('id_barang')
             ->map(function (Collection $grup) {
                 $jumlah = round((float) $grup->sum('jumlah_stok'), 6);
@@ -262,12 +306,13 @@ class BomService
             return [];
         }
 
-        return LayerPersediaan::whereIn('bahan_id', $bahanIds)
-            ->where('gudang_id', $gudangId)
+        $this->hargaPerGudang[$gudangId] ??= LayerPersediaan::where('gudang_id', $gudangId)
             ->orderByDesc('id')
             ->get(['bahan_id', 'unit_cost'])
             ->groupBy('bahan_id')
             ->map(fn ($grup) => round((float) $grup->first()->unit_cost, 4))
             ->all();
+
+        return $this->hargaPerGudang[$gudangId];
     }
 }

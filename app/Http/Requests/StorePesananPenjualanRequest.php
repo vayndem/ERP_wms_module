@@ -23,6 +23,7 @@ class StorePesananPenjualanRequest extends FormRequest
             'is_ppn' => ['nullable', 'boolean'],
             'tarif_ppn' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'keterangan' => ['nullable', 'string', 'max:1000'],
+            'alasan_plafon' => ['nullable', 'string', 'max:500'],
             'details' => ['required', 'array', 'min:1'],
             'details.*.bahan_id' => ['required', 'integer', 'exists:bahans,id'],
             'details.*.jumlah' => ['required', 'numeric', 'gt:0'],

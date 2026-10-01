@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SelesaikanBarangTitipanRequest;
 use App\Http\Requests\StoreBarangTitipanRequest;
 use App\Http\Requests\StorePengeluaranBarangRequest;
 use App\Http\Requests\TerimaPengeluaranBarangRequest;
@@ -97,15 +98,15 @@ class PengeluaranBarangController extends Controller
             ->with('success', "Barang titipan {$titipan->nomor} dicatat. Barang ini milik vendor dan tidak masuk persediaan maupun aset.");
     }
 
-    public function selesaikanTitipan(Request $request, BarangTitipan $titipan)
+    public function selesaikanTitipan(SelesaikanBarangTitipanRequest $request, BarangTitipan $titipan)
     {
-        $this->assertBoleh();
+        $data = $request->validated();
 
         try {
             $this->service->selesaikanTitipan(
                 $titipan,
-                (string) $request->input('status'),
-                $request->input('tanggal_kembali', today()->toDateString()),
+                (string) $data['status'],
+                $data['tanggal_kembali'] ?? today()->toDateString(),
             );
         } catch (RuntimeException $e) {
             return back()->withErrors(['titipan' => $e->getMessage()]);
