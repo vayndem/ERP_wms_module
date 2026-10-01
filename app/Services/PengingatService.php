@@ -20,7 +20,9 @@ class PengingatService
     public const AMBANG_CROSS_DOCK_BASI_HARI = 7;
     public const AMBANG_PERINTAH_KERJA_MANDEK_HARI = 14;
 
-    public function __construct(private PengeluaranBarangService $pengeluaran) {}
+    public function __construct(private PengeluaranBarangService $pengeluaran,
+        private SubkontrakService $subkontrak,
+    ) {}
 
     public function susun(string $konteks, string $label, mixed $tanggal, string $url, ?float $nilai = null): ?array
     {
@@ -187,6 +189,18 @@ class PengingatService
         ));
 
         return $this->urutkan($keluar->merge($titipan)->all())->take($limit)->values();
+    }
+
+    public function subkontrakBelumKembali(int $limit = 20): Collection
+    {
+        $baris = $this->subkontrak->terlambat()->map(fn ($row) => $this->susun(
+            'Barang subkontrak belum kembali',
+            $row->nomor . ' · ' . ($row->supplier->nama ?? '-'),
+            $row->estimasi_kembali,
+            route('subkontrak.index'),
+        ));
+
+        return $this->urutkan($baris->all())->take($limit)->values();
     }
 
     public function crossDockBasi(?array $warehouseIds = null, int $limit = 20): Collection

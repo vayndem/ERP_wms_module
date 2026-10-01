@@ -19,6 +19,7 @@ use App\Services\SerapanProduksiService;
 use App\Models\PesananPenjualan;
 use App\Models\PesananPenjualanDetail;
 use App\Services\DataPesananService;
+use App\Services\SubkontrakService;
 use App\Models\User;
 use App\Services\DocumentNumberService;
 use App\Services\PengeluaranBarangService;
@@ -52,6 +53,7 @@ class OperasiGudangDemoSeeder extends Seeder
         $this->jalankan('Revaluasi kurs', fn () => $this->revaluasiKurs($akuntansiUser));
         $this->jalankan('Landed cost', fn () => $this->landedCost($akuntansiUser));
         $this->jalankan('Serapan jam kerja', fn () => $this->serapanJamKerja($produksiUser));
+        $this->jalankan('Pengiriman subkontrak', fn () => $this->subkontrak($gudangUser));
     }
 
     private function landedCost(User $user): void
@@ -139,6 +141,42 @@ class OperasiGudangDemoSeeder extends Seeder
         ], $user);
 
         return $service->rilis($pesanan);
+    }
+
+    private function subkontrak(User $user): void
+    {
+        Auth::setUser($user);
+
+        $service = app(SubkontrakService::class);
+        $gudangSubkontrak = $service->gudangSubkontrak();
+
+        $asal = Gudang::where('kode', 'GDG-UTAMA')->firstOrFail();
+        $tanggal = now()->subDays(10);
+        $dilindungi = $this->bahanPenopangReturPascaInvoice();
+        $bahanId = $this->bahanSiapTransfer($asal, $tanggal, 1)
+            ->reject(fn ($id) => $dilindungi->contains($id))
+            ->first();
+
+        if (!$bahanId) {
+            throw new RuntimeException('tidak ada bahan bebas yang layernya cukup tua untuk dikirim ke vendor tanpa menggerus fixture retur pasca-invoice.');
+        }
+
+        $supplier = Supplier::orderBy('id')->first();
+
+        if (!$supplier) {
+            throw new RuntimeException('belum ada supplier yang bisa dijadikan vendor subkontrak.');
+        }
+
+        $service->kirim([
+            'tanggal' => $tanggal->toDateString(),
+            'supplier_id' => $supplier->id,
+            'gudang_asal_id' => $asal->id,
+            'estimasi_kembali' => today()->subDays(3)->toDateString(),
+            'keperluan' => 'Jasa bordir dan finishing',
+            'details' => [['bahan_id' => $bahanId, 'jumlah' => 1]],
+        ], $user);
+
+        $this->command?->info("Subkontrak: satu bahan dikirim ke {$supplier->nama} dan masih di vendor melewati estimasi kembali ({$gudangSubkontrak->nama}).");
     }
 
     private function jalankan(string $label, callable $skenario): void

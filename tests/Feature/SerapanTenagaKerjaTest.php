@@ -187,6 +187,31 @@ class SerapanTenagaKerjaTest extends TestCase
         $this->assertSame(0, (int) $cek['invalid']);
     }
 
+    public function test_a_locked_period_refuses_to_withdraw_an_absorption(): void
+    {
+        $produksi = User::where('type', User::ROLE_PRODUCTION)->firstOrFail();
+        $pesanan = $this->perintahKerja();
+
+        $jamKerja = app(SerapanProduksiService::class)->catat($pesanan, $this->pusatKerja(), [
+            'tanggal' => today()->toDateString(),
+            'jam' => 2,
+        ], $produksi);
+
+        \App\Models\AccountingPeriodLock::create([
+            'period_start' => today()->startOfMonth()->toDateString(),
+            'period_end' => today()->endOfMonth()->toDateString(),
+            'status' => 'LOCKED',
+            'reason' => 'Uji kunci periode serapan',
+            'locked_by' => User::firstOrFail()->id,
+            'locked_at' => now(),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('dikunci');
+
+        app(SerapanProduksiService::class)->batalkan($jamKerja);
+    }
+
     public function test_the_whole_path_works_over_http_and_is_closed_to_finance(): void
     {
         $produksi = User::where('type', User::ROLE_PRODUCTION)->firstOrFail();

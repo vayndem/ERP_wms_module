@@ -17,6 +17,7 @@ class SerapanProduksiService
         private DataPesananService $dataPesanan,
         private WmsAccountingService $akuntansi,
         private DocumentNumberService $numbers,
+        private AccountingPeriodService $periods,
     ) {}
 
     public function catat(DataPesanan $pesanan, PusatKerja $pusatKerja, array $data, User $user): JamKerjaProduksi
@@ -93,6 +94,7 @@ class SerapanProduksiService
     {
         DB::transaction(function () use ($jamKerja) {
             $jamKerja = JamKerjaProduksi::with('pesanan')->lockForUpdate()->findOrFail($jamKerja->id);
+            $this->periods->assertOpen($jamKerja->tanggal, 'Pembatalan serapan jam kerja');
             $pesanan = $jamKerja->pesanan;
 
             if (!$pesanan || !$pesanan->menerimaBiaya()) {

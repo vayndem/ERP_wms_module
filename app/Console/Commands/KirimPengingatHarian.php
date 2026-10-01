@@ -47,6 +47,7 @@ class KirimPengingatHarian extends Command
             'Barang keluar belum kembali' => [
                 [User::ROLE_WAREHOUSE, User::ROLE_PURCHASING],
                 $this->pengingat->barangKeluarBelumKembali(),
+                $this->pengingat->subkontrakBelumKembali(),
             ],
             'Cross dock menahan stok' => [
                 [User::ROLE_WAREHOUSE],

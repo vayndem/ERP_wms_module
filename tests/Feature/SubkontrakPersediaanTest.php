@@ -160,6 +160,19 @@ class SubkontrakPersediaanTest extends TestCase
         }
     }
 
+    public function test_an_overdue_shipment_reaches_the_daily_reminder(): void
+    {
+        $pengiriman = $this->kirim(1);
+        $pengiriman->update(['estimasi_kembali' => today()->subDays(3)->toDateString()]);
+
+        $pengingat = app(\App\Services\PengingatService::class)->subkontrakBelumKembali();
+
+        $this->assertTrue(
+            $pengingat->contains(fn ($baris) => str_contains($baris['label'] ?? '', $pengiriman->nomor)),
+            'Barang yang menginap di vendor melewati estimasi kembali harus muncul di pengingat, seperti gate pass.'
+        );
+    }
+
     public function test_the_page_is_open_to_the_warehouse_and_closed_to_finance(): void
     {
         $this->actingAs($this->operator())->get(route('subkontrak.index'))->assertOk();

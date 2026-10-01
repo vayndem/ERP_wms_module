@@ -9,6 +9,8 @@ use App\Models\Kit;
 use App\Models\PermintaanPersetujuan;
 use App\Models\StokGudang;
 use App\Models\SuratJalan;
+use App\Models\FakturPenjualan;
+use App\Services\FakturPenjualanService;
 use App\Models\User;
 use App\Services\CalkService;
 use App\Services\KittingService;
@@ -38,9 +40,41 @@ class EksekusiGudangDemoSeeder extends Seeder
         $this->jalankan('Kitting', fn () => $this->kitting($gudangUser));
         $this->jalankan('Reservasi dan pengambilan', fn () => $this->pengambilan($gudangUser));
         $this->jalankan('Retur penjualan', fn () => $this->returPenjualan($salesUser));
+        $this->jalankan('Uang muka pelanggan', fn () => $this->uangMukaPelanggan($salesUser));
         $this->jalankan('Periode terkunci', fn () => $this->periodeTerkunci($akuntansiUser));
         $this->jalankan('Catatan laporan keuangan', fn () => $this->calk($akuntansiUser));
         $this->jalankan('Permintaan persetujuan', fn () => $this->permintaanPersetujuan($akuntansiUser, $manajerUser));
+    }
+
+    private function uangMukaPelanggan(User $user): void
+    {
+        Auth::setUser($user);
+
+        $faktur = FakturPenjualan::whereIn('status', [FakturPenjualan::POSTED, FakturPenjualan::PARTIALLY_PAID])
+            ->where('sisa_tagihan', '>', 0)
+            ->orderBy('tanggal')
+            ->first();
+
+        if (!$faktur) {
+            throw new RuntimeException('tidak ada faktur penjualan bersisa tagihan untuk menerima kelebihan bayar.');
+        }
+
+        $kas = BaganAkun::where('is_cash_bank', true)->where('is_active', true)->orderBy('kode_akun')->first();
+
+        if (!$kas) {
+            throw new RuntimeException('belum ada akun kas/bank untuk menerima pembayaran.');
+        }
+
+        $kelebihan = 250000;
+
+        app(FakturPenjualanService::class)->terimaPembayaran($faktur, [
+            'tanggal' => today()->subDay()->toDateString(),
+            'coa_kas_bank_id' => $kas->id,
+            'jumlah' => round((float) $faktur->sisa_tagihan + $kelebihan, 2),
+            'referensi' => 'Transfer pelanggan melebihi tagihan',
+        ], $user);
+
+        $this->command?->info("Uang muka pelanggan: faktur {$faktur->nomor} dilunasi dan kelebihan Rp" . number_format($kelebihan, 0, ',', '.') . ' diparkir sebagai uang muka.');
     }
 
     private function jalankan(string $label, callable $skenario): void

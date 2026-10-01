@@ -18,10 +18,11 @@ class AksesPerRoleTest extends TestCase
                 'pelanggan.index', 'pesanan-penjualan.index', 'surat-jalan.index',
                 'data-pesanan.index', 'lacak-pembelian.index', 'supplier-scorecard.index',
                 'bom.index', 'routing-produksi.index', 'varians-pemakaian.index',
-                'kinerja-sales.index',
+                'kinerja-sales.index', 'subkontrak.index',
             ], [
                 'bagan-akun.index', 'period-lock.index',
                 'piutang-aging.index', 'revaluasi-kurs.index', 'cross-dock.index',
+                'laporan-pajak-djp.index',
             ]],
 
             'finance' => [User::ROLE_FINANCE, [
@@ -29,16 +30,18 @@ class AksesPerRoleTest extends TestCase
             ], [
                 'bagan-akun.index', 'data-pesanan.index',
                 'bom.index', 'revaluasi-kurs.index', 'cross-dock.index', 'kinerja-sales.index',
+                'subkontrak.index', 'laporan-pajak-djp.index',
             ]],
 
             'warehouse' => [User::ROLE_WAREHOUSE, [
                 'penerimaan-barang.index', 'pemakaian-barang.index', 'transfer-gudangs.index',
                 'stock-opname.index', 'antrean-kerja.index',
                 'surat-jalan.index', 'pesanan-penjualan.index',
-                'cross-dock.index', 'bom.index', 'varians-pemakaian.index',
+                'cross-dock.index', 'bom.index', 'varians-pemakaian.index', 'subkontrak.index',
             ], [
                 'bagan-akun.index', 'faktur-penjualan.index',
                 'kinerja-sales.index', 'piutang-aging.index', 'revaluasi-kurs.index',
+                'laporan-pajak-djp.index',
             ]],
 
             'accounting' => [User::ROLE_ACCOUNTING, [
@@ -47,9 +50,9 @@ class AksesPerRoleTest extends TestCase
                 'reconciliation.index', 'rekonsiliasi-gudangs.index',
                 'permintaan-persetujuan.index', 'faktur-penjualan.index', 'aset.index',
                 'revaluasi-kurs.index', 'kinerja-sales.index', 'piutang-aging.index',
-                'bom.index', 'varians-pemakaian.index',
+                'bom.index', 'varians-pemakaian.index', 'laporan-pajak-djp.index',
             ], [
-                'cross-dock.index',
+                'cross-dock.index', 'subkontrak.index',
             ]],
 
             'accounting_manager' => [User::ROLE_ACCOUNTING_MANAGER, [
@@ -58,15 +61,17 @@ class AksesPerRoleTest extends TestCase
                 'kinerja-sales.index', 'piutang-aging.index',
             ], [
                 'bom.index', 'revaluasi-kurs.index', 'cross-dock.index',
+                'subkontrak.index', 'laporan-pajak-djp.index',
             ]],
 
             'produksi' => [User::ROLE_PRODUCTION, [
                 'pemakaian-barang.index', 'transfer-gudangs.index', 'data-pesanan.index',
                 'bom.index', 'routing-produksi.index', 'varians-pemakaian.index',
-                'cross-dock.index',
+                'cross-dock.index', 'subkontrak.index',
             ], [
                 'bagan-akun.index', 'faktur-penjualan.index', 'pelanggan.index',
                 'kinerja-sales.index', 'piutang-aging.index', 'revaluasi-kurs.index',
+                'laporan-pajak-djp.index',
             ]],
         ];
     }

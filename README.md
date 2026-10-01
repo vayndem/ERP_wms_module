@@ -10,7 +10,7 @@ Warehouse • Procurement • Sales • Production • Finance • Accounting �
 [![PHP](https://img.shields.io/badge/PHP-8.3-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
 [![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com)
 [![Tailwind](https://img.shields.io/badge/Tailwind%20%2B%20daisyUI%20%2B%20Alpine-UI-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Tests](https://img.shields.io/badge/tests-373%20passed-22C55E?style=for-the-badge&logo=php&logoColor=white)](#-pengujian)
+[![Tests](https://img.shields.io/badge/tests-380%20passed-22C55E?style=for-the-badge&logo=php&logoColor=white)](#-pengujian)
 
 </div>
 
@@ -176,6 +176,8 @@ flowchart LR
 | 📦 Warehouse | Pemakaian Barang (NPK) | Pemakaian barang, pengurangan layer FIFO |
 | 📦 Warehouse | Retur Pembelian | Retur sebelum *atau sesudah* invoice/pembayaran posting, otomatis jadi uang muka bila perlu |
 | 📦 Warehouse | Multi Gudang | Saldo per gudang, transfer, mutasi, planning, Consider, Rusak |
+| 📦 Warehouse | Subkontrak | Kirim persediaan ke vendor lewat Gudang Subkontrak dan terima kembali; barang tetap milik sendiri |
+| 🧾 Accounting | Data Pelaporan DJP | Faktur keluaran dan bukti potong per masa pajak, plus ekspor XML yang masih harus dipetakan ke template Coretax |
 | 📦 Warehouse | Stock Opname | Hitung fisik, approval accounting, koreksi stok |
 | 💰 Finance | Faktur Pembelian | Penggabungan LPB/BAP jadi tagihan, PPN Impor, referensi mata uang asing |
 | 💰 Finance | Pembayaran | Pembayaran parsial/penuh, PPh 23/22/4(2) Final, biaya bank, materai, uang muka |
@@ -186,7 +188,8 @@ flowchart LR
 | 📊 Accounting | Antrean Persetujuan | Maker-checker untuk jurnal manual, pembalikan dokumen, dan perubahan bagan akun/mapping |
 | 🛒 Purchasing | Lacak Pembelian | Sebaran nilai satu penerimaan: masih stok, jadi beban, terjual, selisih opname, retur |
 | 🛒 Purchasing | Kartu Skor Supplier | Lead time, ketepatan terhadap target, nilai belanja, rasio retur, rasio reject QC |
-| 💰 Sales | Pelanggan | Master pelanggan: termin, plafon kredit, piutang berjalan |
+| 💰 Sales | Pelanggan | Master pelanggan: termin, plafon kredit **yang ditegakkan**, eksposur dan sisa plafon |
+| 💰 Sales | Uang Muka Pelanggan | Kelebihan bayar diparkir sebagai liabilitas dan dipakai melunasi faktur berikutnya |
 | 💰 Sales | Pesanan Penjualan | Pesanan pelanggan dengan DPP/PPN, ditarik jadi surat jalan |
 | 💰 Sales | Surat Jalan | Pengeluaran barang: konsumsi FIFO + jurnal harga pokok penjualan per gudang |
 | 💰 Sales | Faktur Penjualan | Piutang usaha + PPN Keluaran, NSFP wajib untuk faktur ber-PPN |
@@ -262,6 +265,8 @@ Standar transaksi inventory lainnya:
 - `Gudang Utama → Gudang Produksi` lewat `Transfer Gudang`. Sejak 2026-09-16 perpindahan internal ini **membentuk jurnal** yang netral secara total — nilainya pindah antar dimensi gudang, bukan bertambah atau berkurang.
 - `NPK` dari `Gudang Produksi` adalah titik mulai pemakaian bahan.
 - `Stock Opname` tetap per gudang, termasuk gudang produksi.
+
+**Serapan tenaga kerja dan overhead (sejak 2026-10-01).** Pusat kerja menyimpan tarif tenaga kerja dan overhead per jam; mencatat jam pada sebuah perintah kerja langsung mendebit Barang Dalam Proses dan mengkredit akun serapan, sekaligus menulis barisnya di subledger WIP.
 
 **Job costing (sejak 2026-09-16).** NPK yang ditandai ke sebuah **Perintah Kerja** tidak langsung jadi beban: biayanya menumpuk di `Barang Dalam Proses` bersama biaya jasa subkontrak yang dialokasikan ke perintah kerja yang sama. Saat produksi dilaporkan selesai, harga pokok per unit dikunci dan perintah kerja **berhenti menerima biaya**. Setiap pengiriman melepas WIP secara proporsional ke Beban Pokok Penjualan.
 
@@ -362,8 +367,8 @@ php artisan schedule:work
 
 <div align="center">
 
-![Tests](https://img.shields.io/badge/tests-373%20passed-22C55E?style=flat-square)
-![Assertions](https://img.shields.io/badge/assertions-5%2C309-38BDF8?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-380%20passed-22C55E?style=flat-square)
+![Assertions](https://img.shields.io/badge/assertions-5%2C350-38BDF8?style=flat-square)
 ![Case Sensitive](https://img.shields.io/badge/case--sensitivity-verified-A78BFA?style=flat-square)
 
 </div>

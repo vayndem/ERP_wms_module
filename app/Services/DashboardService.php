@@ -121,6 +121,7 @@ class DashboardService
                 ->merge($this->pengingatan->lotSegeraKedaluwarsa())
                 ->merge($this->pengingatan->transferMenggantung())
                 ->merge($this->pengingatan->crossDockBasi())
+                ->merge($this->pengingatan->subkontrakBelumKembali())
                 ->sortBy('hari')->values(),
             'progress' => [
                 $this->progres('Realisasi Baris PO Terbuka', (float) ($poLines->selesai ?? 0), (float) ($poLines->total ?? 0), 'Baris PO yang sudah diterima penuh'),
@@ -285,6 +286,7 @@ class DashboardService
             'reminders' => $this->pengingatan->lotSegeraKedaluwarsa()
                 ->merge($this->pengingatan->transferMenggantung())
                 ->merge($this->pengingatan->crossDockBasi())
+                ->merge($this->pengingatan->subkontrakBelumKembali())
                 ->sortBy('hari')->values(),
             'progress' => [
                 $this->progres('Penerimaan Sudah Putaway', (float) max($totalPenerimaan - $putawayTertunda, 0), (float) $totalPenerimaan, 'Dokumen penerimaan barang yang sudah ditempatkan ke bin'),
