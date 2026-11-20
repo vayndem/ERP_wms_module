@@ -7,12 +7,11 @@ use App\Models\LayerPersediaan;
 use App\Models\MutasiStok;
 use App\Models\StokGudang;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class StokGudangService
 {
-    public function __construct(private DocumentNumberService $numbers) {}
-
     public function saldo(int $gudangId, int $bahanId): StokGudang
     {
         StokGudang::insertOrIgnore([
@@ -41,18 +40,18 @@ class StokGudangService
         $saldo->update(['stok_dipesan' => max(0, (float) $saldo->stok_dipesan - $jumlah)]);
     }
 
-    public function masuk(int $gudangId, int $bahanId, float $jumlah, float $harga, string $jenis, string $referensi, int $referensiId, ?string $keterangan = null, bool $affectGlobal = true): StokGudang
+    public function masuk(int $gudangId, int $bahanId, float $jumlah, float $harga, string $jenis, string $referensi, int $referensiId, ?string $keterangan = null, bool $affectGlobal = true, ?int $userId = null): StokGudang
     {
         if ($jumlah <= 0) throw new RuntimeException('Jumlah stok masuk harus lebih besar dari nol.');
         $saldo = $this->saldo($gudangId, $bahanId);
         $sebelum = (float) $saldo->stok_tersedia;
         $saldo->update(['stok_tersedia' => $sebelum + $jumlah]);
         if ($affectGlobal) Bahan::whereKey($bahanId)->increment('stok_onhand', $jumlah);
-        $this->catat($saldo, $jenis, $jumlah, 0, $sebelum, $harga, $referensi, $referensiId, $keterangan);
+        $this->catat($saldo, $jenis, $jumlah, 0, $sebelum, $harga, $referensi, $referensiId, $keterangan, $userId ?? Auth::id());
         return $saldo->fresh();
     }
 
-    public function keluar(int $gudangId, int $bahanId, float $jumlah, float $harga, string $jenis, string $referensi, int $referensiId, ?string $keterangan = null, bool $affectGlobal = true): StokGudang
+    public function keluar(int $gudangId, int $bahanId, float $jumlah, float $harga, string $jenis, string $referensi, int $referensiId, ?string $keterangan = null, bool $affectGlobal = true, ?int $userId = null): StokGudang
     {
         if ($jumlah <= 0) throw new RuntimeException('Jumlah stok keluar harus lebih besar dari nol.');
         $saldo = $this->saldo($gudangId, $bahanId);
@@ -62,7 +61,7 @@ class StokGudangService
         }
         $saldo->update(['stok_tersedia' => $sebelum - $jumlah]);
         if ($affectGlobal) Bahan::whereKey($bahanId)->decrement('stok_onhand', $jumlah);
-        $this->catat($saldo, $jenis, 0, $jumlah, $sebelum, $harga, $referensi, $referensiId, $keterangan);
+        $this->catat($saldo, $jenis, 0, $jumlah, $sebelum, $harga, $referensi, $referensiId, $keterangan, $userId ?? Auth::id());
         return $saldo->fresh();
     }
 
@@ -120,11 +119,13 @@ class StokGudangService
         return $allocations;
     }
 
-    private function catat(StokGudang $saldo, string $jenis, float $masuk, float $keluar, float $sebelum, float $harga, string $referensi, int $referensiId, ?string $keterangan): void
+    private function catat(StokGudang $saldo, string $jenis, float $masuk, float $keluar, float $sebelum, float $harga, string $referensi, int $referensiId, ?string $keterangan, ?int $userId): void
     {
+        $tanggal = now();
+
         MutasiStok::create([
-            'nomor_mutasi' => $this->numbers->internal('MTS', 'STK'),
-            'tanggal' => now(),
+            'nomor_mutasi' => 'MTS-'.$tanggal->format('Ym').'-'.Str::ulid(),
+            'tanggal' => $tanggal,
             'jenis_mutasi' => $jenis,
             'gudang_id' => $saldo->gudang_id,
             'bahan_id' => $saldo->bahan_id,
@@ -136,7 +137,7 @@ class StokGudangService
             'total_nilai' => round(($masuk ?: $keluar) * $harga, 2),
             'jenis_referensi' => $referensi,
             'referensi_id' => $referensiId,
-            'user_id' => Auth::id(),
+            'user_id' => $userId,
             'keterangan' => $keterangan,
         ]);
     }

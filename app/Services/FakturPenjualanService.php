@@ -40,6 +40,8 @@ class FakturPenjualanService
                 'pelanggan_id' => $suratJalan->pelanggan_id,
                 'sales_user_id' => $pesanan?->sales_user_id,
                 'no_faktur_pajak' => $data['no_faktur_pajak'] ?? null,
+                'tanggal_faktur_pajak' => $data['tanggal_faktur_pajak'] ?? null,
+                'ppnbm' => $data['ppnbm'] ?? 0,
                 'is_ppn' => (bool) ($pesanan?->is_ppn ?? true),
                 'tarif_ppn' => $pesanan?->tarif_ppn ?? 11,
                 'status' => FakturPenjualan::DRAFT,
@@ -98,7 +100,7 @@ class FakturPenjualanService
     public function posting(FakturPenjualan $faktur, User $user): FakturPenjualan
     {
         return DB::transaction(function () use ($faktur, $user) {
-            $faktur = FakturPenjualan::with('details')->lockForUpdate()->findOrFail($faktur->id);
+            $faktur = FakturPenjualan::with('details', 'pelanggan')->lockForUpdate()->findOrFail($faktur->id);
 
             if (!$faktur->isDraft()) {
                 throw new RuntimeException('Hanya faktur penjualan draft yang dapat diposting.');
@@ -109,6 +111,7 @@ class FakturPenjualanService
             }
 
             $jurnal = $this->akuntansi->postFakturPenjualan($faktur);
+            $pelanggan = $faktur->pelanggan;
 
             foreach ($faktur->details as $baris) {
                 SuratJalanDetail::whereKey($baris->surat_jalan_detail_id)
@@ -121,6 +124,11 @@ class FakturPenjualanService
                 'journal_id' => $jurnal->id,
                 'diposting_oleh' => $user->id,
                 'diposting_pada' => now(),
+                'pembeli_nama' => $pelanggan?->nama,
+                'pembeli_npwp' => $pelanggan?->npwp,
+                'pembeli_nik' => $pelanggan?->nik,
+                'pembeli_nitku' => $pelanggan?->nitku,
+                'pembeli_alamat' => $pelanggan?->alamat,
             ]);
 
             return $faktur->fresh('details');

@@ -7,6 +7,7 @@ use App\Models\Pelanggan;
 use App\Models\PesananPenjualan;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use RuntimeException;
 
 class PlafonKreditService
@@ -70,7 +71,7 @@ class PlafonKreditService
             number_format($eksposur['plafon'], 2, ',', '.')
         );
 
-        if (!$user->isSuperAdmin()) {
+        if (Gate::forUser($user)->denies('tembusPlafonKredit')) {
             throw new RuntimeException($pesan . ' Hanya Super Admin yang dapat menembus plafon, dengan alasan tertulis.');
         }
 

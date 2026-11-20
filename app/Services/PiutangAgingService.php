@@ -157,7 +157,7 @@ class PiutangAgingService
 
         $saldoGl = round((float) JurnalDetail::where('coa_id', $coaId)
             ->whereHas('jurnal', fn ($query) => $query
-                ->where('status', 'POSTED')
+                ->berlaku()
                 ->whereDate('tanggal', '<=', $perTanggal))
             ->selectRaw('SUM(debit - kredit) as saldo')
             ->value('saldo'), 2);

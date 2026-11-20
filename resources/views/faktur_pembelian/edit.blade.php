@@ -6,11 +6,15 @@
         ppnImpor: {{ $invoice->ppn_impor }},
         subTotal: {{ $invoice->sub_total }},
         submitting: false,
+        jenisPph: @js($invoice->jenis_pph ?? ''),
+        kop: @js($invoice->kode_objek_pajak ?? ''),
+        kodeObjek: @js($kodeObjek),
+        get kodeObjekTersaring() { return this.kodeObjek.filter((item) => item.jenis_pph === this.jenisPph); },
         get ppnNominal() { return this.isPpn ? Math.round((this.subTotal * 11) / 100) : 0; },
         get grandTotal() { return (this.subTotal + this.ppnNominal + (Number(this.ongkir) || 0) + (Number(this.ppnImpor) || 0)) - (Number(this.diskon) || 0); },
         async submit(event) {
             const form = event.target;
-            if (this.isPpn && !/^\d{3}\.\d{3}-\d{2}\.\d{8}$/.test((form.no_faktur_pajak.value || '').trim())) {
+            if (this.isPpn && !/^(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})$/.test((form.no_faktur_pajak.value || '').trim())) {
                 window.AppAlert.warning('Nomor Faktur Pajak wajib diisi dengan format yang benar saat PPN dipakai.');
                 return;
             }
@@ -96,8 +100,10 @@
                         <div x-show="isPpn" x-cloak class="mb-2">
                             <label class="label"><span class="label-text font-semibold">No. Faktur Pajak (NSFP) <span class="text-error">*</span></span></label>
                             <input type="text" class="input input-bordered input-sm w-full" name="no_faktur_pajak" value="{{ $invoice->no_faktur_pajak }}"
-                                placeholder="010.001-23.12345678" pattern="\d{3}\.\d{3}-\d{2}\.\d{8}">
-                            <span class="label-text-alt mt-1 text-base-content/50">Format: 010.001-23.12345678 — wajib diisi bila PPN dipakai, syarat kredit PPN Masukan.</span>
+                                placeholder="17 digit angka" pattern="(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})">
+                            <span class="label-text-alt mt-1 text-base-content/50">Format: 17 digit angka (atau format lama 010.001-23.12345678) — wajib diisi bila PPN dipakai, syarat kredit PPN Masukan.</span>
+                            <label class="label"><span class="label-text font-semibold">Tanggal Faktur Pajak</span></label>
+                            <input type="date" class="input input-bordered input-sm w-full" name="tanggal_faktur_pajak" value="{{ $invoice->tanggal_faktur_pajak?->format('Y-m-d') }}">
                         </div>
                         <div class="mb-2 flex items-center gap-3">
                             <label class="w-24 font-semibold">Diskon:</label>
@@ -110,6 +116,10 @@
                         <div class="mb-2 flex items-center gap-3">
                             <label class="w-24 font-semibold">PPN Impor:</label>
                             <input type="number" step="any" min="0" name="ppn_impor" x-model.number="ppnImpor" data-money-input class="input input-bordered input-sm flex-1 text-end">
+                        </div>
+                        <div class="mb-2 flex items-center gap-3">
+                            <label class="w-24 font-semibold">PPnBM:</label>
+                            <input type="number" step="any" min="0" name="ppnbm" value="{{ $invoice->ppnbm }}" data-money-input class="input input-bordered input-sm flex-1 text-end">
                         </div>
                         <div class="mb-2">
                             <label class="label"><span class="label-text font-semibold">Mata Uang Asing (opsional)</span></label>
@@ -127,13 +137,22 @@
                         </div>
                         <div class="mb-2">
                             <label class="label"><span class="label-text font-semibold">Jenis PPh</span></label>
-                            <select name="jenis_pph" class="select select-bordered select-sm w-full">
+                            <select name="jenis_pph" x-model="jenisPph" @change="kop = ''" class="select select-bordered select-sm w-full">
                                 <option value="" @selected(!$invoice->jenis_pph)>Tidak ada</option>
                                 <option value="PPH23" @selected($invoice->jenis_pph === 'PPH23')>PPh 23</option>
                                 <option value="PPH22" @selected($invoice->jenis_pph === 'PPH22')>PPh 22</option>
                                 <option value="PPH4A2" @selected($invoice->jenis_pph === 'PPH4A2')>PPh 4(2) Final</option>
                             </select>
                             <span class="label-text-alt mt-1 text-base-content/50">PPh dicatat dan dipotong saat pembayaran.</span>
+                        </div>
+                        <div class="mb-2" x-show="jenisPph" x-cloak>
+                            <label class="label"><span class="label-text font-semibold">Kode Objek Pajak (opsional)</span></label>
+                            <select name="kode_objek_pajak" x-model="kop" class="select select-bordered select-sm w-full">
+                                <option value="">Belum dipilih</option>
+                                <template x-for="item in kodeObjekTersaring" :key="item.kode">
+                                    <option :value="item.kode" x-text="item.kode + ' - ' + item.deskripsi"></option>
+                                </template>
+                            </select>
                         </div>
                         <div class="divider my-1"></div>
                         <div class="flex items-center justify-between">

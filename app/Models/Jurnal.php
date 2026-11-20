@@ -29,6 +29,13 @@ class Jurnal extends Model
 
     protected $casts = ['tanggal' => 'date', 'posted_at' => 'datetime'];
 
+    public const STATUS_BERLAKU = ['POSTED', 'REVERSED'];
+
+    public function scopeBerlaku($query)
+    {
+        return $query->whereIn($query->getModel()->getTable() . '.status', self::STATUS_BERLAKU);
+    }
+
     public function isManual(): bool
     {
         return $this->sumber_transaksi === 'MANUAL';

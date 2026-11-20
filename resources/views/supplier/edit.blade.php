@@ -40,14 +40,7 @@
                     </div>
                 </div>
 
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-semibold">NPWP</span></label>
-                    <div class="join">
-                        <span class="join-item btn btn-disabled btn-outline"><i class="fa-solid fa-id-card"></i></span>
-                        <input type="text" name="npwp" value="{{ $supplier->npwp }}" class="input input-bordered join-item flex-1"
-                            placeholder="Nomor NPWP...">
-                    </div>
-                </div>
+                @include('partials.identitas-pajak', ['model' => $supplier])
 
                 <div class="form-control">
                     <label class="label"><span class="label-text font-semibold">Sistem Pembayaran <span class="text-error">*</span></span></label>

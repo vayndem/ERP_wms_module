@@ -14,6 +14,7 @@ class UserAccountService
     public const LOGIN_GAGAL = 'login_gagal';
     public const LOGIN_DITOLAK = 'login_ditolak';
     public const LOGOUT = 'logout';
+    public const RESET_PASSWORD = 'reset_password';
 
     public function buat(array $data): User
     {
@@ -126,6 +127,11 @@ class UserAccountService
     public function catatLogout(User $user, ?string $ip): void
     {
         $this->catat(self::LOGOUT, $user->id, $ip, ['email' => $user->email]);
+    }
+
+    public function catatResetPassword(User $user, ?string $ip): void
+    {
+        $this->catat(self::RESET_PASSWORD, $user->id, $ip, ['email' => $user->email]);
     }
 
     public function catatLoginGagal(?string $email, ?string $ip, bool $akunNonaktif = false): void

@@ -20,10 +20,6 @@ class ResetPasswordController extends Controller
     {
         $email = $request->validated()['email'];
 
-        if (!User::where('email', $email)->where('is_active', true)->exists()) {
-            return back()->with('status', 'Jika email tersebut terdaftar dan aktif, tautan reset sudah dikirim.');
-        }
-
         Password::sendResetLink(['email' => $email, 'is_active' => true]);
 
         return back()->with('status', 'Jika email tersebut terdaftar dan aktif, tautan reset sudah dikirim.');

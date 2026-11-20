@@ -14,7 +14,7 @@ class FinancialStatementService
         $accounts = BaganAkun::orderBy('kode_akun')->get();
 
         $sums = JurnalDetail::query()
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereDate('tanggal', '<=', $asOf))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereDate('tanggal', '<=', $asOf))
             ->selectRaw('coa_id, SUM(debit) as total_debit, SUM(kredit) as total_kredit')
             ->groupBy('coa_id')
             ->get()
@@ -47,14 +47,14 @@ class FinancialStatementService
         $sign = $account->posisi_normal === 'DEBIT' ? 1 : -1;
 
         $openingSum = JurnalDetail::where('coa_id', $account->id)
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereDate('tanggal', '<', $from))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereDate('tanggal', '<', $from))
             ->selectRaw('SUM(debit) as debit, SUM(kredit) as kredit')
             ->first();
 
         $opening = $sign * ((float) ($openingSum->debit ?? 0) - (float) ($openingSum->kredit ?? 0));
 
         $details = JurnalDetail::where('coa_id', $account->id)
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereBetween('tanggal', [$from, $to]))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereBetween('tanggal', [$from, $to]))
             ->with('jurnal')
             ->get()
             ->sortBy(fn (JurnalDetail $detail) => $detail->jurnal->tanggal->format('Y-m-d') . '-' . str_pad((string) $detail->id, 10, '0', STR_PAD_LEFT))
@@ -92,7 +92,7 @@ class FinancialStatementService
 
         $sums = JurnalDetail::query()
             ->whereHas('coa', fn ($q) => $q->whereIn('kategori_akun', ['PENDAPATAN', 'BEBAN']))
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereBetween('tanggal', [$from, $to]))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereBetween('tanggal', [$from, $to]))
             ->selectRaw('coa_id, SUM(debit) as total_debit, SUM(kredit) as total_kredit')
             ->groupBy('coa_id')
             ->get()
@@ -142,7 +142,7 @@ class FinancialStatementService
         $saldoAwal = $this->saldoKas($kasIds, null, $from->copy()->subDay());
 
         $jurnalIds = JurnalDetail::whereIn('coa_id', $kasIds)
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereBetween('tanggal', [$from, $to]))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereBetween('tanggal', [$from, $to]))
             ->distinct()->pluck('jurnal_id');
 
         $details = JurnalDetail::whereIn('jurnal_id', $jurnalIds)->with(['jurnal', 'coa'])->get();
@@ -202,7 +202,7 @@ class FinancialStatementService
     {
         $sum = JurnalDetail::whereIn('coa_id', $kasIds)
             ->whereHas('jurnal', function ($q) use ($from, $to) {
-                $q->where('status', 'POSTED')->whereDate('tanggal', '<=', $to);
+                $q->berlaku()->whereDate('tanggal', '<=', $to);
                 if ($from) {
                     $q->whereDate('tanggal', '>=', $from);
                 }
@@ -314,7 +314,7 @@ class FinancialStatementService
     {
         return JurnalDetail::whereIn('coa_id', $accountIds)
             ->whereHas('jurnal', function ($q) use ($from, $to) {
-                $q->where('status', 'POSTED')->whereDate('tanggal', '<=', $to);
+                $q->berlaku()->whereDate('tanggal', '<=', $to);
                 if ($from) {
                     $q->whereDate('tanggal', '>=', $from);
                 }
@@ -331,7 +331,7 @@ class FinancialStatementService
 
         $net = JurnalDetail::query()
             ->whereIn('coa_id', $accountIds)
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereDate('tanggal', '<=', $asOf))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereDate('tanggal', '<=', $asOf))
             ->selectRaw('SUM(kredit) - SUM(debit) as net')
             ->value('net');
 

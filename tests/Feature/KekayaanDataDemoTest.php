@@ -43,6 +43,7 @@ class KekayaanDataDemoTest extends TestCase
             'catatan laporan keuangan' => ['wms_catatan_laporan_keuangan'],
             'saran pengisian ulang' => ['wms_saran_pengisian_ulang'],
             'perhitungan pajak penghasilan' => ['wms_perhitungan_pajak_penghasilan'],
+            'bukti potong' => ['wms_bukti_potong'],
         ];
     }
 

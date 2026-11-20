@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\KepatuhanPajakService;
 use App\Services\LaporanPajakDjpService;
 use Illuminate\Http\Request;
 
@@ -9,13 +10,14 @@ class LaporanPajakDjpController extends Controller
 {
     public function __construct(private LaporanPajakDjpService $pajak) {}
 
-    public function index(Request $request)
+    public function index(Request $request, KepatuhanPajakService $kepatuhan)
     {
         $this->authorize('viewFinancialStatements');
 
         $masa = $this->masa($request);
 
         return view('laporan_pajak_djp.index', $this->pajak->ringkasan($masa) + [
+            'kepatuhan' => $kepatuhan->periksa($masa),
             'templateAcuan' => LaporanPajakDjpService::TEMPLATE_FAKTUR,
             'converterAcuan' => LaporanPajakDjpService::CONVERTER_FAKTUR,
         ]);

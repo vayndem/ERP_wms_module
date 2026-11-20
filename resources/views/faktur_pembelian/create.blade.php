@@ -143,8 +143,10 @@
                         </div>
                         <div x-show="form.is_ppn" x-cloak class="mb-2">
                             <label class="label"><span class="label-text font-semibold">No. Faktur Pajak (NSFP) <span class="text-error">*</span></span></label>
-                            <input type="text" x-model="form.no_faktur_pajak" class="input input-bordered input-sm w-full" placeholder="010.001-23.12345678" pattern="\d{3}\.\d{3}-\d{2}\.\d{8}">
-                            <span class="label-text-alt mt-1 text-base-content/50">Format: 010.001-23.12345678 — wajib diisi bila PPN dipakai, syarat kredit PPN Masukan.</span>
+                            <input type="text" x-model="form.no_faktur_pajak" class="input input-bordered input-sm w-full" placeholder="17 digit angka" pattern="(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})">
+                            <span class="label-text-alt mt-1 text-base-content/50">Format: 17 digit angka (atau format lama 010.001-23.12345678) — wajib diisi bila PPN dipakai, syarat kredit PPN Masukan.</span>
+                            <label class="label"><span class="label-text font-semibold">Tanggal Faktur Pajak</span></label>
+                            <input type="date" x-model="form.tanggal_faktur_pajak" class="input input-bordered input-sm w-full">
                         </div>
                         <div class="mb-2 flex items-center gap-3">
                             <label class="w-24 font-semibold">Diskon:</label>
@@ -157,6 +159,10 @@
                         <div class="mb-2 flex items-center gap-3">
                             <label class="w-24 font-semibold">PPN Impor:</label>
                             <input type="number" step="any" min="0" x-model.number="form.ppn_impor" data-money-input class="input input-bordered input-sm flex-1 text-end">
+                        </div>
+                        <div class="mb-2 flex items-center gap-3">
+                            <label class="w-24 font-semibold">PPnBM:</label>
+                            <input type="number" step="any" min="0" x-model.number="form.ppnbm" data-money-input class="input input-bordered input-sm flex-1 text-end">
                         </div>
                         <div class="mb-2">
                             <label class="label"><span class="label-text font-semibold">Mata Uang Asing (opsional)</span></label>
@@ -176,13 +182,22 @@
                         </div>
                         <div class="mb-2">
                             <label class="label"><span class="label-text font-semibold">Jenis PPh</span></label>
-                            <select x-model="form.jenis_pph" class="select select-bordered select-sm w-full">
+                            <select x-model="form.jenis_pph" @change="form.kode_objek_pajak = ''" class="select select-bordered select-sm w-full">
                                 <option value="">Tidak ada</option>
                                 <option value="PPH23">PPh 23</option>
                                 <option value="PPH22">PPh 22</option>
                                 <option value="PPH4A2">PPh 4(2) Final</option>
                             </select>
                             <span class="label-text-alt mt-1 text-base-content/50">PPh dicatat dan dipotong saat pembayaran, bukan saat invoice diterima.</span>
+                        </div>
+                        <div class="mb-2" x-show="form.jenis_pph" x-cloak>
+                            <label class="label"><span class="label-text font-semibold">Kode Objek Pajak (opsional)</span></label>
+                            <select x-model="form.kode_objek_pajak" class="select select-bordered select-sm w-full">
+                                <option value="">Belum dipilih</option>
+                                <template x-for="kop in kodeObjekTersaring" :key="kop.kode">
+                                    <option :value="kop.kode" x-text="kop.kode + ' - ' + kop.deskripsi"></option>
+                                </template>
+                            </select>
                         </div>
                         <div class="divider my-1"></div>
                         <div class="flex items-center justify-between">
@@ -219,10 +234,14 @@
             submitting: false,
             form: {
                 no_invoice: '', tanggal: new Date().toISOString().substring(0, 10), tgl_deadline_pembayaran: '',
-                is_ppn: false, no_faktur_pajak: '', diskon: 0, ongkir: 0, ppn_impor: 0, jenis_pph: 'PPH23', note: '',
+                is_ppn: false, no_faktur_pajak: '', tanggal_faktur_pajak: '', diskon: 0, ongkir: 0, ppn_impor: 0, ppnbm: 0, jenis_pph: 'PPH23', kode_objek_pajak: '', note: '',
                 mata_uang_asing: '', kurs: '', nilai_asing: '',
             },
 
+            kodeObjek: @js($kodeObjek),
+            get kodeObjekTersaring() {
+                return this.kodeObjek.filter((item) => item.jenis_pph === this.form.jenis_pph);
+            },
             get selectedSupplier() {
                 return this.suppliers.find((item) => String(item.id) === String(this.supplierId)) || null;
             },
@@ -301,7 +320,7 @@
             async submit() {
                 if (!this.supplierId) { window.AppAlert.warning('Supplier wajib dipilih dari dropdown.'); return; }
                 if (this.selectedLpbIds.length === 0) { window.AppAlert.warning('Pilih minimal satu LPB atau BAP dari supplier tersebut.'); return; }
-                if (this.form.is_ppn && !/^\d{3}\.\d{3}-\d{2}\.\d{8}$/.test((this.form.no_faktur_pajak || '').trim())) {
+                if (this.form.is_ppn && !/^(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})$/.test((this.form.no_faktur_pajak || '').trim())) {
                     window.AppAlert.warning('Nomor Faktur Pajak wajib diisi dengan format yang benar saat PPN dipakai.');
                     return;
                 }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\FakturPembelian;
+use App\Rules\NsfpValid;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,7 +44,15 @@ class UpdateFakturPembelianRequest extends FormRequest
             'no_faktur_pajak'         => [
                 Rule::requiredIf(fn () => $this->boolean('is_ppn')),
                 'nullable', 'string', 'max:30',
-                'regex:/^\d{3}\.\d{3}-\d{2}\.\d{8}$/',
+                new NsfpValid(),
+            ],
+            'tanggal_faktur_pajak'    => ['nullable', 'date'],
+            'ppnbm'                   => ['nullable', 'numeric', 'min:0', 'max:9999999999999999'],
+            'kode_objek_pajak'        => [
+                'nullable', 'string',
+                Rule::exists('wms_kode_objek_pajak', 'kode')
+                    ->where('is_active', true)
+                    ->where('jenis_pph', $this->input('jenis_pph')),
             ],
             'diskon'                  => 'nullable|numeric|min:0',
             'ongkir'                  => 'nullable|numeric|min:0',
@@ -53,6 +62,13 @@ class UpdateFakturPembelianRequest extends FormRequest
             'mata_uang_asing'         => ['nullable', 'string', 'regex:/^[A-Z]{3}$/'],
             'kurs'                    => ['nullable', 'numeric', 'min:0.0001', Rule::requiredIf(fn () => filled($this->mata_uang_asing))],
             'nilai_asing'             => ['nullable', 'numeric', 'min:0.01', Rule::requiredIf(fn () => filled($this->mata_uang_asing))],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'kode_objek_pajak.exists' => 'Kode objek pajak tidak dikenal atau tidak sesuai dengan jenis PPh yang dipilih.',
         ];
     }
 }

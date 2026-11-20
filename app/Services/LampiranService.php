@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Aset;
+use App\Models\BuktiPotong;
 use App\Models\FakturPembelian;
 use App\Models\LampiranDokumen;
 use App\Models\PembayaranFaktur;
@@ -29,6 +30,7 @@ class LampiranService
         'retur-pembelian' => ReturPembelian::class,
         'pemeriksaan-kualitas' => PemeriksaanKualitas::class,
         'aset' => Aset::class,
+        'bukti-potong' => BuktiPotong::class,
     ];
 
     public function disk(): string

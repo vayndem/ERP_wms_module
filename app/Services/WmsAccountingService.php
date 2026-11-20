@@ -58,7 +58,7 @@ class WmsAccountingService
         return $this->post("LPB-{$lpb->id_lpb}", $lpb->tanggal, 'LPB', $lpb->id, "Penerimaan barang {$lpb->id_lpb}", $lines);
     }
 
-    public function postReturPembelian(ReturPembelian $retur): Jurnal
+    public function postReturPembelian(ReturPembelian $retur, ?int $userId = null): Jurnal
     {
         $this->periods->assertOpen($retur->tanggal, 'Retur pembelian');
         $retur->loadMissing('details.lpbDetail.kategori', 'lpb');
@@ -103,13 +103,13 @@ class WmsAccountingService
         $journal = $this->post("RTV-{$retur->no_retur}", $retur->tanggal, 'RETUR_PEMBELIAN', $retur->id, "Retur pembelian {$retur->no_retur} atas LPB {$retur->lpb->id_lpb}", $lines);
 
         if ($invoice) {
-            $this->applyReturToInvoice($retur, $invoice, $apPortion, $advancePortion);
+            $this->applyReturToInvoice($retur, $invoice, $apPortion, $advancePortion, $userId ?? Auth::id());
         }
 
         return $journal;
     }
 
-    private function applyReturToInvoice(ReturPembelian $retur, FakturPembelian $invoice, float $apPortion, float $advancePortion): void
+    private function applyReturToInvoice(ReturPembelian $retur, FakturPembelian $invoice, float $apPortion, float $advancePortion, ?int $userId): void
     {
         if ($apPortion > 0) {
             $newGrandTotal = round((float) $invoice->grand_total - $apPortion, 2);
@@ -136,7 +136,7 @@ class WmsAccountingService
                 'kelebihan_pembayaran' => $advancePortion,
                 'total_transaksi_pengurang_hutang' => 0,
                 'keterangan' => "Uang muka supplier dari retur pembelian {$retur->no_retur}",
-                'finance_user_id' => Auth::id(),
+                'finance_user_id' => $userId,
                 'status' => PembayaranFaktur::POSTED,
             ]);
             $advancePaymentId = $advancePayment->id;
@@ -329,9 +329,9 @@ class WmsAccountingService
         );
     }
 
-    public function postPenerimaanTransfer(TransferGudang $transfer): ?Jurnal
+    public function postPenerimaanTransfer(TransferGudang $transfer, $tanggalTerima): ?Jurnal
     {
-        $this->periods->assertOpen($transfer->tanggal, 'Penerimaan transfer gudang');
+        $this->periods->assertOpen($tanggalTerima, 'Penerimaan transfer gudang');
         $transfer->loadMissing('details.bahan.tipeBarang');
 
         $transitId = AccountingSetting::accountId(AccountingSetting::PERSEDIAAN_DALAM_PERJALANAN);
@@ -357,7 +357,7 @@ class WmsAccountingService
 
         return $this->post(
             "TRF-{$transfer->nomor_transfer}-TERIMA",
-            $transfer->tanggal,
+            $tanggalTerima,
             'TRANSFER_GUDANG',
             $transfer->id,
             "Penerimaan transfer gudang {$transfer->nomor_transfer}",

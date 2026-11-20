@@ -143,7 +143,11 @@ class DataPesananService
             );
         }
 
-        $nilai = round($jumlah * (float) $pesanan->biaya_per_unit, 2);
+        $menghabiskan = round($pesanan->jumlahBelumTerkirim() - $jumlah, 6) <= 0.000001;
+
+        $nilai = $menghabiskan
+            ? max(0.0, round($pesanan->totalBiaya() - $pesanan->totalDilepas(), 2))
+            : round($jumlah * (float) $pesanan->biaya_per_unit, 2);
 
         $pesanan->update([
             'jumlah_terkirim' => round((float) $pesanan->jumlah_terkirim + $jumlah, 6),

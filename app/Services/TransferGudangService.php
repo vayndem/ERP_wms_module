@@ -99,8 +99,9 @@ class TransferGudangService
                 if ($selisih > 0) Bahan::whereKey($detail->bahan_id)->decrement('stok_onhand', $selisih);
                 $detail->update(['jumlah_diterima' => $quantity, 'jumlah_selisih' => $selisih]);
             }
-            $transfer->update(['status' => TransferGudang::DITERIMA, 'diterima_oleh' => Auth::id(), 'diterima_pada' => now(), 'catatan_penerimaan' => $notes, 'dikonfirmasi_oleh' => Auth::id(), 'dikonfirmasi_pada' => now()]);
-            $this->akuntansi->postPenerimaanTransfer($transfer);
+            $tanggalTerima = now();
+            $transfer->update(['status' => TransferGudang::DITERIMA, 'diterima_oleh' => Auth::id(), 'diterima_pada' => $tanggalTerima, 'catatan_penerimaan' => $notes, 'dikonfirmasi_oleh' => Auth::id(), 'dikonfirmasi_pada' => $tanggalTerima]);
+            $this->akuntansi->postPenerimaanTransfer($transfer, $tanggalTerima->toDateString());
             return $transfer->fresh('details');
         });
     }

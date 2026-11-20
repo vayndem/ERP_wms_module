@@ -1,3 +1,5 @@
+import { handleSessionExpired } from './ajax-modal';
+
 export default function notifikasiLonceng() {
     return {
         belumDibaca: 0,
@@ -21,6 +23,7 @@ export default function notifikasiLonceng() {
                 const response = await fetch('/notifikasi/lonceng', {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
                 });
+                if (handleSessionExpired(response)) return;
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const json = await response.json();
                 this.belumDibaca = json.belum_dibaca ?? 0;
@@ -36,7 +39,7 @@ export default function notifikasiLonceng() {
         async bacaSemua() {
             const token = document.querySelector('meta[name="csrf-token"]')?.content;
             try {
-                await fetch('/notifikasi/baca-semua', {
+                const response = await fetch('/notifikasi/baca-semua', {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -44,6 +47,7 @@ export default function notifikasiLonceng() {
                         Accept: 'application/json',
                     },
                 });
+                if (handleSessionExpired(response)) return;
                 this.belumDibaca = 0;
                 this.items = this.items.map((item) => ({ ...item, dibaca: true }));
             } catch (error) {

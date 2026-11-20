@@ -76,16 +76,16 @@ class WarehouseExecutionService
         });
     }
 
-    public function createPick(ReservasiPersediaan $reservation): PesananPengambilan
+    public function createPick(ReservasiPersediaan $reservation, ?int $userId = null): PesananPengambilan
     {
-        return DB::transaction(function () use ($reservation) {
+        return DB::transaction(function () use ($reservation, $userId) {
             $reservation = ReservasiPersediaan::lockForUpdate()->findOrFail($reservation->id);
             if ($reservation->status !== 'ACTIVE') throw new RuntimeException('Reservasi tidak aktif.');
             $quantity = (float) $reservation->quantity - (float) $reservation->picked_quantity;
             $layers = LayerPersediaan::with('lot')->where('gudang_id', $reservation->gudang_id)->where('bahan_id', $reservation->bahan_id)->where('stock_status', 'AVAILABLE')->where('remaining_quantity', '>', 0)
                 ->orderByRaw('CASE WHEN inventory_lot_id IS NULL THEN 1 ELSE 0 END')->orderByRaw('(SELECT expires_at FROM wms_lot_persediaan WHERE wms_lot_persediaan.id = wms_layer_persediaan.inventory_lot_id)')->orderBy('transaction_date')->lockForUpdate()->get();
             if ((float) $layers->sum('remaining_quantity') + .000001 < $quantity) throw new RuntimeException('Layer tersedia tidak mencukupi untuk picking.');
-            $pick = PesananPengambilan::create(['number' => $this->numbers->internal('PCK', 'STK'), 'gudang_id' => $reservation->gudang_id, 'status' => 'RELEASED', 'created_by' => Auth::id()]);
+            $pick = PesananPengambilan::create(['number' => $this->numbers->internal('PCK', 'STK'), 'gudang_id' => $reservation->gudang_id, 'status' => 'RELEASED', 'created_by' => $userId ?? Auth::id()]);
             $remaining = $quantity;
             foreach ($layers as $layer) {
                 if ($remaining <= 0) break;

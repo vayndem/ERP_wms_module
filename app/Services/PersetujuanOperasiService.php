@@ -75,7 +75,7 @@ class PersetujuanOperasiService
                 throw new RuntimeException('Permintaan ini sudah diputuskan sebelumnya.');
             }
 
-            $this->jalankan($terkunci);
+            $this->jalankan($terkunci, $pemutus->id);
 
             $terkunci->update([
                 'status' => PermintaanPersetujuan::APPROVED,
@@ -126,22 +126,25 @@ class PersetujuanOperasiService
         }
     }
 
-    private function jalankan(PermintaanPersetujuan $permintaan): void
+    private function jalankan(PermintaanPersetujuan $permintaan, int $userId): void
     {
         $payload = $permintaan->payload ?? [];
 
         match ($permintaan->sub_jenis) {
             self::REVERSE_LPB => $this->reversals->reverseLpb(
                 PenerimaanBarang::findOrFail($permintaan->referensi_id),
-                (string) $permintaan->alasan
+                (string) $permintaan->alasan,
+                $userId
             ),
             self::REVERSE_NPK => $this->reversals->reverseNpk(
                 PemakaianBarang::findOrFail($permintaan->referensi_id),
-                (string) $permintaan->alasan
+                (string) $permintaan->alasan,
+                $userId
             ),
             self::REVERSE_RETUR => $this->reversals->reverseReturPembelian(
                 ReturPembelian::findOrFail($permintaan->referensi_id),
-                (string) $permintaan->alasan
+                (string) $permintaan->alasan,
+                $userId
             ),
             self::COA_UBAH => $this->terapkanPerubahanCoa($permintaan, $payload),
             self::COA_MAPPING => $this->terapkanMapping($payload),

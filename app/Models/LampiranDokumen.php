@@ -22,6 +22,7 @@ class LampiranDokumen extends Model
         'SURAT_JALAN' => 'Surat Jalan Supplier',
         'QC' => 'Foto / Berita Acara QC',
         'ASET' => 'Dokumen & Foto Aset',
+        'BUKTI_POTONG' => 'Bukti Potong dari Coretax (PDF)',
         'BUKTI_BAYAR' => 'Bukti Transfer / Pembayaran',
         'LAIN' => 'Lain-lain',
     ];
