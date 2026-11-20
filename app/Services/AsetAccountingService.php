@@ -66,6 +66,9 @@ class AsetAccountingService
         return DB::transaction(function () use ($asset, $data) {
             $asset = Aset::with('category')->lockForUpdate()->findOrFail($asset->id);
             if ($asset->status !== Aset::ACTIVE) throw new RuntimeException('Hanya aset aktif yang dapat disusutkan.');
+            if ($asset->depreciations()->where('period_label', $data['period_label'])->exists()) {
+                throw new RuntimeException("Aset {$asset->nomor_aset} sudah disusutkan untuk periode {$data['period_label']}.");
+            }
             $this->assertCategoryMapping($asset);
             $amount = round((float) ($data['amount'] ?? $asset->suggestedMonthlyDepreciation()), 2);
             $maximum = round((float) $asset->book_value - (float) $asset->residual_value, 2);
@@ -145,10 +148,11 @@ class AsetAccountingService
         return ['posted' => $posted, 'skipped' => $skipped, 'failed' => $failed];
     }
 
-    public function dispose(Aset $asset, array $data): PelepasanAset
+    public function dispose(Aset $asset, array $data, ?int $userId = null): PelepasanAset
     {
         $this->periods->assertOpen($data['disposal_date'], 'Pelepasan aset');
-        return DB::transaction(function () use ($asset, $data) {
+        return DB::transaction(function () use ($asset, $data, $userId) {
+            $actorId = $userId ?? Auth::id();
             $asset = Aset::with('category')->lockForUpdate()->findOrFail($asset->id);
             if ($asset->status !== Aset::ACTIVE) throw new RuntimeException('Aset sudah tidak aktif.');
             $this->assertCategoryMapping($asset);
@@ -184,7 +188,7 @@ class AsetAccountingService
                 'gain_amount' => $gain,
                 'loss_amount' => $loss,
                 'reason' => $data['reason'],
-                'disposed_by' => Auth::id(),
+                'disposed_by' => $actorId,
             ]);
             $lines = [];
             if ($proceeds > 0 && !$tradeIn) {
@@ -224,7 +228,7 @@ class AsetAccountingService
             $disposal->update(['journal_id' => $journal->id]);
 
             if ($tradeIn) {
-                $disposal->update(['advance_payment_id' => $this->uangMukaTukarTambah($disposal, $proceeds + $ppnKeluaran)]);
+                $disposal->update(['advance_payment_id' => $this->uangMukaTukarTambah($disposal, $proceeds + $ppnKeluaran, $actorId)]);
             }
 
             $asset->update(['status' => match ($data['disposal_type']) {
@@ -237,7 +241,7 @@ class AsetAccountingService
         });
     }
 
-    private function uangMukaTukarTambah(PelepasanAset $disposal, float $nilai): ?int
+    private function uangMukaTukarTambah(PelepasanAset $disposal, float $nilai, ?int $userId): ?int
     {
         if ($nilai <= 0) {
             return null;
@@ -257,7 +261,7 @@ class AsetAccountingService
             'kelebihan_pembayaran' => $nilai,
             'total_transaksi_pengurang_hutang' => 0,
             'keterangan' => "Uang muka supplier dari tukar tambah aset {$disposal->asset->nomor_aset}",
-            'finance_user_id' => Auth::id(),
+            'finance_user_id' => $userId,
             'status' => PembayaranFaktur::POSTED,
         ])->id;
     }

@@ -26,10 +26,7 @@
                     <label class="label"><span class="label-text">Nama</span></label>
                     <input type="text" name="nama" value="{{ old('nama', $pelanggan->nama) }}" required class="input input-bordered input-sm">
                 </div>
-                <div class="form-control">
-                    <label class="label"><span class="label-text">NPWP</span></label>
-                    <input type="text" name="npwp" value="{{ old('npwp', $pelanggan->npwp) }}" class="input input-bordered input-sm">
-                </div>
+                @include('partials.identitas-pajak', ['model' => $pelanggan])
                 <div class="form-control">
                     <label class="label"><span class="label-text">Telepon</span></label>
                     <input type="text" name="telp" value="{{ old('telp', $pelanggan->telp) }}" class="input input-bordered input-sm">

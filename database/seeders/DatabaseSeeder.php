@@ -219,18 +219,30 @@ class DatabaseSeeder extends Seeder
         $suppliers = [
             [
                 'nama'       => 'PT. Jaya Mandiri Utama',
+                'npwp'       => '0912345678901000',
+                'nitku'      => '0912345678901000000000',
+                'tipe_identitas' => 'NPWP',
+                'status_pkp' => true,
                 'alamat'     => 'Jl. Industri No. 45, Jakarta',
                 'telp'       => '021-5551234',
                 'pembayaran' => 'CASH',
             ],
             [
                 'nama'       => 'CV. Sumber Makmur',
+                'npwp'       => '0923456789012000',
+                'nitku'      => '0923456789012000000000',
+                'tipe_identitas' => 'NPWP',
+                'status_pkp' => true,
                 'alamat'     => 'Jl. Raya Banten No. 88, Tangerang',
                 'telp'       => '021-5555678',
                 'pembayaran' => 'KREDIT 30 HARI',
             ],
             [
                 'nama'       => 'PT. Global Supply Indonesia',
+                'npwp'       => '0934567890123000',
+                'nitku'      => '0934567890123000000000',
+                'tipe_identitas' => 'NPWP',
+                'status_pkp' => true,
                 'alamat'     => 'Jl. Gatot Subroto Km 7, Surabaya',
                 'telp'       => '031-7778899',
                 'pembayaran' => 'KREDIT 14 HARI',
@@ -303,6 +315,8 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
         ]);
 
+        $this->call(KodeObjekPajakSeeder::class);
+
         $this->call([
             WmsDemoSeeder::class,
             WmsTransactionScenarioSeeder::class,
@@ -324,6 +338,8 @@ class DatabaseSeeder extends Seeder
         $this->call(OperasiGudangDemoSeeder::class);
         $this->call(EksekusiGudangDemoSeeder::class);
         $this->call(KontrolMutuDanPajakDemoSeeder::class);
+        $this->call(MetadataPajakDemoSeeder::class);
+        $this->call(BuktiPotongDemoSeeder::class);
     }
 
     private function syncMultiWarehouseDemoData(): void

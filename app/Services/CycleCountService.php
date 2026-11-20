@@ -38,7 +38,7 @@ class CycleCountService
 
     public function mulai(int $gudangId, string $kelas, string $cutoff, ?string $catatan = null): StockOpname
     {
-        if (!array_key_exists($kelas, AbcAnalysisService::SIKLUS_BULAN)) {
+        if (! array_key_exists($kelas, AbcAnalysisService::SIKLUS_BULAN)) {
             throw new RuntimeException('Kelas ABC tidak dikenal. Gunakan A, B, atau C.');
         }
 
@@ -85,9 +85,47 @@ class CycleCountService
 
     public function papanJadwal(array $gudangIds): Collection
     {
-        return collect($gudangIds)->map(fn ($gudangId) => [
-            'gudang_id' => (int) $gudangId,
-            'kelas' => $this->abc->jatuhTempoSiklus((int) $gudangId),
-        ])->filter(fn ($row) => $row['kelas'] !== [])->values();
+        $jumlahBahan = PengaturanBahanGudang::query()
+            ->whereIn('gudang_id', $gudangIds)
+            ->whereIn('kelas_abc', array_keys(AbcAnalysisService::SIKLUS_BULAN))
+            ->where('aktif', true)
+            ->selectRaw('gudang_id, kelas_abc, COUNT(*) as jumlah')
+            ->groupBy('gudang_id', 'kelas_abc')
+            ->get()
+            ->keyBy(fn ($row) => $row->gudang_id.':'.$row->kelas_abc);
+
+        $terakhir = StockOpname::query()
+            ->whereIn('warehouse_id', $gudangIds)
+            ->where('jenis', StockOpname::SIKLUS)
+            ->whereIn('kelas_abc', array_keys(AbcAnalysisService::SIKLUS_BULAN))
+            ->where('status', StockOpname::POSTED)
+            ->selectRaw('warehouse_id, kelas_abc, MAX(posted_at) as terakhir')
+            ->groupBy('warehouse_id', 'kelas_abc')
+            ->get()
+            ->keyBy(fn ($row) => $row->warehouse_id.':'.$row->kelas_abc);
+
+        return collect($gudangIds)->map(function ($gudangId) use ($jumlahBahan, $terakhir) {
+            $kelas = collect(AbcAnalysisService::SIKLUS_BULAN)->mapWithKeys(function ($bulan, $namaKelas) use ($gudangId, $jumlahBahan, $terakhir) {
+                $kunci = $gudangId.':'.$namaKelas;
+                $jumlah = (int) ($jumlahBahan->get($kunci)?->jumlah ?? 0);
+
+                if ($jumlah === 0) {
+                    return [];
+                }
+
+                $tanggalTerakhir = $terakhir->get($kunci)?->terakhir;
+
+                return [$namaKelas => [
+                    'kelas' => $namaKelas,
+                    'bahan' => $jumlah,
+                    'siklus_bulan' => $bulan,
+                    'terakhir' => $tanggalTerakhir,
+                    'jatuh_tempo' => $tanggalTerakhir === null || $tanggalTerakhir < now()->subMonths($bulan),
+                    'hari_sejak' => $tanggalTerakhir ? (int) now()->diffInDays($tanggalTerakhir) : null,
+                ]];
+            })->all();
+
+            return ['gudang_id' => (int) $gudangId, 'kelas' => $kelas];
+        })->filter(fn ($row) => $row['kelas'] !== [])->values();
     }
 }

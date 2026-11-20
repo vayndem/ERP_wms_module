@@ -53,6 +53,43 @@
         </div>
 
         <div class="card mb-4 border border-base-300 bg-base-100 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-4">
+                <h4 class="font-semibold">Pemeriksaan Kepatuhan Data Pajak</h4>
+                @if ($kepatuhan['total'] === 0)
+                    <span class="badge badge-success badge-sm">tidak ada temuan</span>
+                @else
+                    <span class="badge badge-warning badge-sm">{{ $kepatuhan['total'] }} temuan</span>
+                @endif
+            </div>
+            <div class="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach ($kepatuhan['ringkasan'] as $kategori => $jumlah)
+                    <div class="flex items-center justify-between rounded-lg border {{ $jumlah > 0 ? 'border-warning/40 bg-warning/5' : 'border-base-300' }} px-3 py-2 text-sm">
+                        <span class="font-mono text-xs">{{ $kategori }}</span>
+                        <span class="font-bold">{{ $jumlah }}</span>
+                    </div>
+                @endforeach
+            </div>
+            @if ($kepatuhan['total'] > 0)
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead><tr><th>Kategori</th><th>Dokumen</th><th>Nomor</th><th>Pihak</th><th>Keterangan</th></tr></thead>
+                        <tbody>
+                            @foreach ($kepatuhan['temuan'] as $temuan)
+                                <tr>
+                                    <td class="font-mono text-xs">{{ $temuan['kategori'] }}</td>
+                                    <td>{{ $temuan['dokumen'] }}</td>
+                                    <td class="font-mono text-xs">{{ $temuan['nomor'] ?: '-' }}</td>
+                                    <td>{{ $temuan['pihak'] ?: '-' }}</td>
+                                    <td>{{ $temuan['keterangan'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+
+        <div class="card mb-4 border border-base-300 bg-base-100 shadow-sm">
             <div class="border-b border-base-300 p-4"><h4 class="font-semibold">Faktur Pajak Keluaran</h4></div>
             <div class="overflow-x-auto">
                 <table class="table table-sm">
@@ -88,18 +125,27 @@
         </div>
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="border-b border-base-300 p-4"><h4 class="font-semibold">Bukti Potong Unifikasi</h4></div>
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-4">
+                <div>
+                    <h4 class="font-semibold">Pemotongan PPh 23 dan PPh 4(2)</h4>
+                    <p class="text-xs text-base-content/60">Dari pembayaran POSTED menurut tanggal pembayaran, bukan dari tanggal faktur.</p>
+                </div>
+                @can('viewAny', App\Models\BuktiPotong::class)
+                    <a href="{{ route('bukti-potong.index', ['masa' => $masa]) }}" class="btn btn-outline btn-sm">Kelola Bukti Potong</a>
+                @endcan
+            </div>
             <div class="overflow-x-auto">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Invoice</th><th>Tanggal</th><th>Lawan Transaksi</th><th>NPWP</th>
-                            <th>Jenis</th><th class="text-end">DPP</th><th class="text-end">PPh</th><th>Status</th>
+                            <th>Pembayaran</th><th>Invoice</th><th>Tgl Bayar</th><th>Lawan Transaksi</th><th>NPWP</th>
+                            <th>Jenis</th><th class="text-end">DPP</th><th class="text-end">PPh</th><th>Bukti Potong</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($bupot as $baris)
                             <tr>
+                                <td class="font-mono text-xs">{{ $baris['nomor_pembayaran'] }}</td>
                                 <td class="font-mono text-xs">{{ $baris['nomor_invoice'] }}</td>
                                 <td>{{ $baris['tanggal'] }}</td>
                                 <td>{{ $baris['nama_lawan_transaksi'] }}</td>
@@ -109,14 +155,14 @@
                                 <td class="text-end">Rp {{ number_format($baris['pph_dipotong'], 2, ',', '.') }}</td>
                                 <td>
                                     @if ($baris['siap_lapor'])
-                                        <span class="badge badge-success badge-sm">siap</span>
+                                        <span class="badge badge-success badge-sm">{{ $baris['status_bukti'] }}{{ $baris['nomor_bukti_djp'] ? ' ' . $baris['nomor_bukti_djp'] : '' }}</span>
                                     @else
                                         <span class="badge badge-warning badge-sm">{{ $baris['catatan'] }}</span>
                                     @endif
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="8" class="py-6 text-center text-base-content/50">Tidak ada pemotongan PPh pada masa pajak ini.</td></tr>
+                            <tr><td colspan="9" class="py-6 text-center text-base-content/50">Tidak ada pembayaran yang memotong PPh pada masa pajak ini.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

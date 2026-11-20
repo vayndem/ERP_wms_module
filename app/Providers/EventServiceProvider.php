@@ -6,6 +6,7 @@ use App\Listeners\CatatAktivitasAutentikasi;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -27,6 +28,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         Logout::class => [
             [CatatAktivitasAutentikasi::class, 'handleLogout'],
+        ],
+        PasswordReset::class => [
+            [CatatAktivitasAutentikasi::class, 'handlePasswordReset'],
         ],
         Failed::class => [
             [CatatAktivitasAutentikasi::class, 'handleFailed'],

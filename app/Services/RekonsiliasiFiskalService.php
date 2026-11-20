@@ -45,7 +45,7 @@ class RekonsiliasiFiskalService
     {
         $sums = JurnalDetail::query()
             ->join('wms_bagan_akun', 'wms_bagan_akun.id', '=', 'wms_jurnal_detail.coa_id')
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereBetween('tanggal', [$from, $to]))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereBetween('tanggal', [$from, $to]))
             ->whereIn('wms_bagan_akun.kategori_akun', ['PENDAPATAN', 'BEBAN'])
             ->selectRaw('wms_bagan_akun.kategori_akun, SUM(wms_jurnal_detail.debit) as debit, SUM(wms_jurnal_detail.kredit) as kredit')
             ->groupBy('wms_bagan_akun.kategori_akun')
@@ -81,7 +81,7 @@ class RekonsiliasiFiskalService
 
         return JurnalDetail::query()
             ->join('wms_bagan_akun', 'wms_bagan_akun.id', '=', 'wms_jurnal_detail.coa_id')
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED')->whereBetween('tanggal', [$from, $to]))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereBetween('tanggal', [$from, $to]))
             ->whereRaw("COALESCE(wms_jurnal_detail.klasifikasi_fiskal, wms_bagan_akun.klasifikasi_fiskal) <> ?", [BaganAkun::FISKAL_NONE])
             ->selectRaw('wms_bagan_akun.id as coa_id, wms_bagan_akun.kode_akun, wms_bagan_akun.nama_akun, wms_bagan_akun.kategori_akun')
             ->selectRaw('COALESCE(wms_jurnal_detail.klasifikasi_fiskal, wms_bagan_akun.klasifikasi_fiskal) as klasifikasi')

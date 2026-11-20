@@ -16,8 +16,16 @@ class Supplier extends Model
         'nama',
         'alamat',
         'npwp',
+        'nik',
+        'nitku',
+        'tipe_identitas',
+        'status_pkp',
         'telp',
         'up',
         'pembayaran',
+    ];
+
+    protected $casts = [
+        'status_pkp' => 'boolean',
     ];
 }

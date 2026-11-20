@@ -1,3 +1,5 @@
+import { handleSessionExpired } from './ajax-modal';
+
 function debounce(fn, delay) {
     let timer;
     return function (...args) {
@@ -93,6 +95,10 @@ export default function wmsDataTable(config) {
                 const response = await fetch(`${this.url}?${params.toString()}`, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 });
+                if (handleSessionExpired(response)) {
+                    this.rows = [];
+                    return;
+                }
                 if (!response.ok) {
                     throw new Error('HTTP ' + response.status);
                 }

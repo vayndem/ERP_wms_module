@@ -2,27 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PemakaianBarang;
-use App\Models\Bahan;
-use App\Models\Gudang;
-use App\Models\Jurnal;
+use App\Exports\GenericTableExport;
 use App\Http\Requests\StorePemakaianBarangRequest;
 use App\Http\Requests\UpdatePemakaianBarangRequest;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\WmsAccountingService;
+use App\Models\Bahan;
+use App\Models\DataPesanan;
+use App\Models\Gudang;
+use App\Models\PemakaianBarang;
+use App\Models\ReservasiPersediaan;
 use App\Services\AccountingPeriodService;
 use App\Services\DocumentNumberService;
 use App\Services\StokGudangService;
 use App\Services\WarehouseExecutionService;
-use App\Models\ReservasiPersediaan;
-use App\Exports\GenericTableExport;
+use App\Services\WmsAccountingService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class PemakaianBarangController extends Controller
 {
     public function __construct(private WmsAccountingService $accounting, private AccountingPeriodService $periods, private DocumentNumberService $numbers, private StokGudangService $stokGudang, private WarehouseExecutionService $execution) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', PemakaianBarang::class);
@@ -31,12 +32,12 @@ class PemakaianBarangController extends Controller
 
         if ($request->ajax()) {
             $query = PemakaianBarang::with(['barang', 'gudangAsal', 'gudangTujuan'])
-                ->when($request->user()->isProduction(), fn($builder) => $builder->whereIn('id_gudang_asal', $warehouseIds))
+                ->when($request->user()->isProduction(), fn ($builder) => $builder->whereIn('id_gudang_asal', $warehouseIds))
                 ->when($request->filled('status'), function ($query) use ($request) {
                     $query->where('status', $request->input('status'));
                 });
 
-            if (!$financial) {
+            if (! $financial) {
                 $query->select([
                     'id',
                     'kode',
@@ -64,7 +65,8 @@ class PemakaianBarangController extends Controller
                 })
                 ->addColumn('jumlah_display', function ($row) {
                     $unit = $row->satuan_transaksi ?: ($row->barang->satuan ?? '');
-                    return number_format((float) $row->jumlah, 2, ',', '.') . ' ' . $unit;
+
+                    return number_format((float) $row->jumlah, 2, ',', '.').' '.$unit;
                 })
                 ->addColumn('can_update', function ($row) use ($request) {
                     return $request->user()->can('update', $row);
@@ -86,19 +88,19 @@ class PemakaianBarangController extends Controller
         $this->authorize('viewAny', PemakaianBarang::class);
         $financial = $request->user()->can('viewFinancials', PemakaianBarang::class);
 
-        $filters = collect($request->input('filters', []))->filter(fn($value) => $value !== '');
+        $filters = collect($request->input('filters', []))->filter(fn ($value) => $value !== '');
         $search = trim((string) $request->input('search', ''));
         $query = PemakaianBarang::with('barang')
             ->when($request->user()->isProduction(), fn ($q) => $q->whereIn('id_gudang_asal', $request->user()->accessibleGudangIds('npk')))
-            ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest('tanggal');
 
         if ($search !== '') {
-            $query->where(fn($q) => $q->where('kode', 'like', "%{$search}%")
+            $query->where(fn ($q) => $q->where('kode', 'like', "%{$search}%")
                 ->orWhere('kode_datapesanan', 'like', "%{$search}%")
                 ->orWhere('tanggal', 'like', "%{$search}%")
                 ->orWhere('operator', 'like', "%{$search}%")
-                ->orWhereHas('barang', fn($barang) => $barang->where('nama', 'like', "%{$search}%")));
+                ->orWhereHas('barang', fn ($barang) => $barang->where('nama', 'like', "%{$search}%")));
         }
 
         foreach (['kode', 'kode_datapesanan', 'tanggal', 'jumlah', 'status', 'operator'] as $field) {
@@ -107,7 +109,7 @@ class PemakaianBarangController extends Controller
             }
         }
         if ($filters->has('nama_barang')) {
-            $query->whereHas('barang', fn($barang) => $barang->where('nama', 'like', "%{$filters['nama_barang']}%"));
+            $query->whereHas('barang', fn ($barang) => $barang->where('nama', 'like', "%{$filters['nama_barang']}%"));
         }
 
         $rows = $query->limit(5000)->get()->map(function ($row) use ($financial) {
@@ -116,15 +118,16 @@ class PemakaianBarangController extends Controller
                 'kode_datapesanan' => $row->kode_datapesanan ?: '-',
                 'tanggal' => $row->tanggal,
                 'nama_barang' => $row->barang->nama ?? '-',
-                'jumlah' => number_format($row->jumlah, 2, ',', '.') . ' ' .
+                'jumlah' => number_format($row->jumlah, 2, ',', '.').' '.
                     ($row->satuan_transaksi ?: ($row->barang->satuan ?? '')),
                 'status' => $row->status === PemakaianBarang::POSTED ? 'Keluar' : ($row->status === PemakaianBarang::REVERSED ? 'Reversed' : 'Draft'),
                 'operator' => $row->operator ?: '-',
             ];
             if ($financial) {
-                $data['harga_satuan'] = 'Rp ' . number_format($row->harga_satuan, 2, ',', '.');
-                $data['total_nilai'] = 'Rp ' . number_format($row->total_nilai, 2, ',', '.');
+                $data['harga_satuan'] = 'Rp '.number_format($row->harga_satuan, 2, ',', '.');
+                $data['total_nilai'] = 'Rp '.number_format($row->total_nilai, 2, ',', '.');
             }
+
             return $data;
         });
 
@@ -157,19 +160,19 @@ class PemakaianBarangController extends Controller
         $this->authorize('viewAny', PemakaianBarang::class);
         $financial = $request->user()->can('viewFinancials', PemakaianBarang::class);
 
-        $filters = collect($request->input('filters', []))->filter(fn($value) => $value !== '');
+        $filters = collect($request->input('filters', []))->filter(fn ($value) => $value !== '');
         $search = trim((string) $request->input('search', ''));
         $query = PemakaianBarang::with('barang')
             ->when($request->user()->isProduction(), fn ($q) => $q->whereIn('id_gudang_asal', $request->user()->accessibleGudangIds('npk')))
-            ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->latest('tanggal');
 
         if ($search !== '') {
-            $query->where(fn($q) => $q->where('kode', 'like', "%{$search}%")
+            $query->where(fn ($q) => $q->where('kode', 'like', "%{$search}%")
                 ->orWhere('kode_datapesanan', 'like', "%{$search}%")
                 ->orWhere('tanggal', 'like', "%{$search}%")
                 ->orWhere('operator', 'like', "%{$search}%")
-                ->orWhereHas('barang', fn($barang) => $barang->where('nama', 'like', "%{$search}%")));
+                ->orWhereHas('barang', fn ($barang) => $barang->where('nama', 'like', "%{$search}%")));
         }
 
         foreach (['kode', 'kode_datapesanan', 'tanggal', 'jumlah', 'status', 'operator'] as $field) {
@@ -178,7 +181,7 @@ class PemakaianBarangController extends Controller
             }
         }
         if ($filters->has('nama_barang')) {
-            $query->whereHas('barang', fn($barang) => $barang->where('nama', 'like', "%{$filters['nama_barang']}%"));
+            $query->whereHas('barang', fn ($barang) => $barang->where('nama', 'like', "%{$filters['nama_barang']}%"));
         }
 
         $rows = $query->limit(5000)->get()->map(function ($row) use ($financial) {
@@ -196,6 +199,7 @@ class PemakaianBarangController extends Controller
                 $data['harga_satuan'] = (float) $row->harga_satuan;
                 $data['total_nilai'] = (float) $row->total_nilai;
             }
+
             return $data;
         });
 
@@ -214,13 +218,13 @@ class PemakaianBarangController extends Controller
         $columns[] = ['key' => 'status', 'label' => 'Status'];
         $columns[] = ['key' => 'operator', 'label' => 'Operator'];
 
-        return Excel::download(new GenericTableExport($columns, $rows), 'daftar-npk-' . now()->format('Ymd-His') . '.xlsx');
+        return Excel::download(new GenericTableExport($columns, $rows), 'daftar-npk-'.now()->format('Ymd-His').'.xlsx');
     }
 
     private function perintahKerjaTerbuka($user)
     {
-        return \App\Models\DataPesanan::with(['pesananPenjualan.pelanggan', 'bahanHasil'])
-            ->whereIn('status', [\App\Models\DataPesanan::DRAFT, \App\Models\DataPesanan::DIRILIS])
+        return DataPesanan::with(['pesananPenjualan.pelanggan', 'bahanHasil'])
+            ->whereIn('status', [DataPesanan::DRAFT, DataPesanan::DIRILIS])
             ->whereIn('gudang_id', $user->accessibleGudangIds('npk'))
             ->orderByDesc('tanggal')
             ->get();
@@ -230,7 +234,7 @@ class PemakaianBarangController extends Controller
     {
         $this->authorize('create', PemakaianBarang::class);
 
-        $bahans = Bahan::with('stokGudangs')->orderBy('nama', 'asc')->get();
+        $bahans = Bahan::with(['kategoriBahan', 'stokGudangs'])->orderBy('nama', 'asc')->get();
         $gudangs = $this->availableWarehouses(request()->user(), 'npk');
         $documentNumber = $this->numbers->preview(DocumentNumberService::EXTERNAL, 'NPK');
         $reservations = ReservasiPersediaan::with(['bahan', 'gudang'])->whereIn('gudang_id', request()->user()->accessibleGudangIds('npk'))->whereIn('status', ['ACTIVE', 'PICKED'])->get();
@@ -261,7 +265,9 @@ class PemakaianBarangController extends Controller
             $npk = PemakaianBarang::create($validated);
 
             if ($isKeluar) {
-                if ($npk->inventory_reservation_id) $this->execution->consumeReservation(ReservasiPersediaan::findOrFail($npk->inventory_reservation_id), (int) $npk->id_gudang_asal, (int) $npk->id_barang, (float) $npk->jumlah_stok);
+                if ($npk->inventory_reservation_id) {
+                    $this->execution->consumeReservation(ReservasiPersediaan::findOrFail($npk->inventory_reservation_id), (int) $npk->id_gudang_asal, (int) $npk->id_barang, (float) $npk->jumlah_stok);
+                }
                 $this->stokGudang->saldo((int) $npk->id_gudang_asal, (int) $npk->id_barang);
                 $this->accounting->consumeStock($npk);
                 $this->stokGudang->keluar((int) $npk->id_gudang_asal, (int) $npk->id_barang, (float) $npk->jumlah_stok, (float) $npk->harga_satuan, 'PENGELUARAN', 'NPK', $npk->id, $npk->kode);
@@ -274,7 +280,7 @@ class PemakaianBarangController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pengeluaran barang (NPK) berhasil disimpan.',
-            'data'    => $npk
+            'data' => $npk,
         ], 201);
     }
 
@@ -284,16 +290,16 @@ class PemakaianBarangController extends Controller
         $this->authorize('view', $npk);
         $npk->setAttribute(
             'jumlah_display',
-            number_format((float) $npk->jumlah, 2, ',', '.') . ' ' .
+            number_format((float) $npk->jumlah, 2, ',', '.').' '.
                 ($npk->satuan_transaksi ?: ($npk->barang->satuan ?? ''))
         );
-        if (!request()->user()->can('viewFinancials', PemakaianBarang::class)) {
+        if (! request()->user()->can('viewFinancials', PemakaianBarang::class)) {
             $npk->makeHidden(['harga_satuan', 'total_nilai']);
         }
 
         return response()->json([
             'success' => true,
-            'data'    => $npk
+            'data' => $npk,
         ]);
     }
 
@@ -340,7 +346,9 @@ class PemakaianBarangController extends Controller
             $npk->update($validated);
 
             if ($willClose) {
-                if ($npk->inventory_reservation_id) $this->execution->consumeReservation(ReservasiPersediaan::findOrFail($npk->inventory_reservation_id), (int) $npk->id_gudang_asal, (int) $npk->id_barang, (float) $npk->jumlah_stok);
+                if ($npk->inventory_reservation_id) {
+                    $this->execution->consumeReservation(ReservasiPersediaan::findOrFail($npk->inventory_reservation_id), (int) $npk->id_gudang_asal, (int) $npk->id_barang, (float) $npk->jumlah_stok);
+                }
                 $this->stokGudang->saldo((int) $npk->id_gudang_asal, (int) $npk->id_barang);
                 $this->accounting->consumeStock($npk);
                 $this->stokGudang->keluar((int) $npk->id_gudang_asal, (int) $npk->id_barang, (float) $npk->jumlah_stok, (float) $npk->harga_satuan, 'PENGELUARAN', 'NPK', $npk->id, $npk->kode);
@@ -351,7 +359,7 @@ class PemakaianBarangController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Pengeluaran barang (NPK) berhasil diperbarui.',
-            'data'    => $npk
+            'data' => $npk,
         ]);
     }
 
@@ -366,7 +374,7 @@ class PemakaianBarangController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Pengeluaran barang (NPK) berhasil dihapus.'
+            'message' => 'Pengeluaran barang (NPK) berhasil dihapus.',
         ]);
     }
 

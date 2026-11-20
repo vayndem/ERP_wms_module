@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Auth;
 
 class ThreeWayMatchService
 {
-    public function evaluate(FakturPembelian $invoice, float $priceTolerancePercent = 0.5, float $quantityTolerancePercent = 0): array
+    public function evaluate(FakturPembelian $invoice, float $priceTolerancePercent = 0.5, float $quantityTolerancePercent = 0, ?int $userId = null): array
     {
         $invoice->loadMissing('receipts.lpb.details.bahan', 'receipts.lpb.serviceDetails.servicePoDetail', 'receipts.lpb.pembelian.details');
         $issues = [];
@@ -49,7 +49,7 @@ class ThreeWayMatchService
             ? 'BLOCKED'
             : ($issues ? 'WARNING' : 'MATCHED');
         $summary = ['status' => $status, 'issues' => $issues, 'receipt_value' => round($receiptValue, 2)];
-        $invoice->update(['match_status' => $status, 'match_summary' => $summary, 'matched_by' => Auth::id(), 'matched_at' => now()]);
+        $invoice->update(['match_status' => $status, 'match_summary' => $summary, 'matched_by' => $userId ?? Auth::id(), 'matched_at' => now()]);
 
         return $summary;
     }

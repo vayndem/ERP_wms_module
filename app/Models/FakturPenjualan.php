@@ -22,6 +22,8 @@ class FakturPenjualan extends Model
 
     protected $fillable = [
         'nomor', 'tanggal', 'jatuh_tempo', 'pelanggan_id', 'sales_user_id', 'no_faktur_pajak',
+        'tanggal_faktur_pajak', 'ppnbm',
+        'pembeli_nama', 'pembeli_npwp', 'pembeli_nik', 'pembeli_nitku', 'pembeli_alamat',
         'is_ppn', 'tarif_ppn', 'total_dpp', 'total_ppn', 'grand_total', 'sisa_tagihan',
         'status', 'keterangan', 'journal_id', 'dibuat_oleh', 'diposting_oleh', 'diposting_pada',
     ];
@@ -33,6 +35,8 @@ class FakturPenjualan extends Model
         'tarif_ppn' => 'decimal:4',
         'total_dpp' => 'decimal:2',
         'total_ppn' => 'decimal:2',
+        'ppnbm' => 'decimal:2',
+        'tanggal_faktur_pajak' => 'date',
         'grand_total' => 'decimal:2',
         'sisa_tagihan' => 'decimal:2',
         'diposting_pada' => 'datetime',

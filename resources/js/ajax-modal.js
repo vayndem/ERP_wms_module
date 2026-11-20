@@ -1,3 +1,25 @@
+let sessionExpiredShown = false;
+
+export function handleSessionExpired(response) {
+    if (!response || (response.status !== 401 && response.status !== 419)) return false;
+    if (sessionExpiredShown) return true;
+    sessionExpiredShown = true;
+
+    const loginUrl = document.querySelector('meta[name="login-url"]')?.content || '/';
+    const redirect = () => { window.location.assign(loginUrl); };
+    const alert = window.AppAlert?.warning(
+        'Sesi Anda telah berakhir. Silakan masuk kembali.',
+        'Sesi berakhir'
+    );
+
+    if (alert && typeof alert.then === 'function') {
+        alert.then(redirect, redirect);
+    } else {
+        redirect();
+    }
+    return true;
+}
+
 export async function openAjaxModal(url) {
     const container = document.getElementById('modal-container');
     if (!container) return;
@@ -6,6 +28,7 @@ export async function openAjaxModal(url) {
         const response = await fetch(url, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' },
         });
+        if (handleSessionExpired(response)) return;
         if (!response.ok) {
             throw new Error('HTTP ' + response.status);
         }
@@ -53,6 +76,7 @@ export async function submitAjaxForm(event, options = {}) {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             body: new URLSearchParams(new FormData(form)),
         });
+        if (handleSessionExpired(response)) return false;
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
@@ -81,6 +105,7 @@ export async function confirmAjaxDelete(event, message = 'Yakin ingin menghapus 
     await submitAjaxForm(event);
 }
 
+window.handleSessionExpired = handleSessionExpired;
 window.openAjaxModal = openAjaxModal;
 window.closeAjaxModal = closeAjaxModal;
 window.submitAjaxForm = submitAjaxForm;

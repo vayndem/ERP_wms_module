@@ -55,14 +55,15 @@ class SubkontrakPersediaanTest extends TestCase
             ->sum(\Illuminate\Support\Facades\DB::raw('remaining_quantity * unit_cost')), 2);
         $stokAsalSebelum = round((float) $stok->stok_tersedia, 6);
 
+        $gudangSubkontrak = app(SubkontrakService::class)->gudangSubkontrak();
+        $stokVendorSebelum = round((float) StokGudang::where('gudang_id', $gudangSubkontrak->id)->where('bahan_id', $bahanId)->value('stok_tersedia'), 6);
+
         $pengiriman = app(SubkontrakService::class)->kirim([
             'tanggal' => today()->toDateString(),
             'supplier_id' => Supplier::firstOrFail()->id,
             'gudang_asal_id' => $gudangAsal,
             'details' => [['bahan_id' => $bahanId, 'jumlah' => 2]],
         ], $this->operator());
-
-        $gudangSubkontrak = app(SubkontrakService::class)->gudangSubkontrak();
 
         $this->assertSame(PengirimanSubkontrak::DIKIRIM, $pengiriman->status);
 
@@ -74,7 +75,7 @@ class SubkontrakPersediaanTest extends TestCase
         );
 
         $this->assertEqualsWithDelta(
-            2,
+            $stokVendorSebelum + 2,
             round((float) StokGudang::where('gudang_id', $gudangSubkontrak->id)->where('bahan_id', $bahanId)->value('stok_tersedia'), 6),
             0.000001,
             'Barang di vendor tetap stok milik kita, hanya berpindah gudang.'

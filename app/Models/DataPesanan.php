@@ -90,7 +90,14 @@ class DataPesanan extends Model
             return $this->totalBiaya();
         }
 
-        return round($this->jumlahBelumTerkirim() * (float) $this->biaya_per_unit, 2);
+        return round($this->totalBiaya() - $this->totalDilepas(), 2);
+    }
+
+    public function totalDilepas(): float
+    {
+        return round((float) SuratJalanDetail::where('data_pesanan_id', $this->id)
+            ->whereHas('suratJalan', fn ($query) => $query->whereIn('status', [SuratJalan::DRAFT, SuratJalan::POSTED]))
+            ->sum('hpp'), 2);
     }
 
     public function scopeBerjalan($query)

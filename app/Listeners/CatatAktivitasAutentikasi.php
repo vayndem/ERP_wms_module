@@ -7,6 +7,7 @@ use App\Services\UserAccountService;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Auth\Events\PasswordReset;
 
 class CatatAktivitasAutentikasi
 {
@@ -23,6 +24,13 @@ class CatatAktivitasAutentikasi
     {
         if ($event->user instanceof User) {
             $this->akun->catatLogout($event->user, request()?->ip());
+        }
+    }
+
+    public function handlePasswordReset(PasswordReset $event): void
+    {
+        if ($event->user instanceof User) {
+            $this->akun->catatResetPassword($event->user, request()?->ip());
         }
     }
 

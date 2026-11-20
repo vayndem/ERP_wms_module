@@ -34,7 +34,7 @@ class RoutingProduksiService
 
     public function ubahStatusPusatKerja(PusatKerja $pusatKerja, string $status): PusatKerja
     {
-        if (!in_array($status, [PusatKerja::AKTIF, PusatKerja::NONAKTIF], true)) {
+        if (! in_array($status, [PusatKerja::AKTIF, PusatKerja::NONAKTIF], true)) {
             throw new RuntimeException('Status pusat kerja tidak dikenal.');
         }
 
@@ -75,7 +75,7 @@ class RoutingProduksiService
                 ->pluck('kode');
 
             if ($nonaktif->isNotEmpty()) {
-                throw new RuntimeException('Pusat kerja nonaktif tidak dapat dipakai: ' . $nonaktif->implode(', ') . '.');
+                throw new RuntimeException('Pusat kerja nonaktif tidak dapat dipakai: '.$nonaktif->implode(', ').'.');
             }
 
             $bom->operasi()->delete();
@@ -90,7 +90,7 @@ class RoutingProduksiService
     {
         $bom = $this->bom->bomUntuk($pesanan);
 
-        if (!$bom) {
+        if (! $bom) {
             return ['bom' => null, 'basis' => 0.0, 'operasi' => collect(), 'total_menit' => 0.0];
         }
 
@@ -122,11 +122,31 @@ class RoutingProduksiService
     public function bebanPusatKerja(): Collection
     {
         $berjalan = DataPesanan::berjalan()->get();
+        $bomPerBahan = Bom::aktif()
+            ->with('operasi.pusatKerja')
+            ->whereIn('bahan_id', $berjalan->pluck('bahan_hasil_id')->unique())
+            ->orderBy('id')
+            ->get()
+            ->keyBy('bahan_id');
 
         $beban = [];
 
         foreach ($berjalan as $pesanan) {
-            $operasiPesanan = $this->routing($pesanan)['operasi'];
+            $bom = $bomPerBahan->get($pesanan->bahan_hasil_id);
+
+            if (! $bom) {
+                continue;
+            }
+
+            $basis = $pesanan->sudahSelesai()
+                ? (float) $pesanan->jumlah_selesai
+                : (float) $pesanan->jumlah_rencana;
+            $perUnit = max((float) $bom->jumlah_hasil, 0.000001);
+            $operasiPesanan = $bom->operasi->sortBy('urutan')->map(fn (OperasiBom $operasi) => [
+                'pusat_kerja_id' => (int) $operasi->pusat_kerja_id,
+                'pusat_kerja' => $operasi->pusatKerja?->nama ?? '-',
+                'total_menit' => round((float) $operasi->waktu_standar_menit * $basis / $perUnit, 2),
+            ]);
 
             foreach ($operasiPesanan as $operasi) {
                 $id = $operasi['pusat_kerja_id'];

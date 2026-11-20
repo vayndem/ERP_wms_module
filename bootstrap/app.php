@@ -28,12 +28,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'password_confirmation',
         ]);
 
+        $middleware->web(append: [
+            \App\Http\Middleware\PastikanAkunAktif::class,
+        ]);
+
         $middleware->api(prepend: [
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('login'));
-        $middleware->redirectUsersTo('/home');
+        $middleware->redirectUsersTo(fn () => route('dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->dontFlash([

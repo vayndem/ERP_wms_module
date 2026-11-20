@@ -61,6 +61,20 @@
             @if ($faktur->no_faktur_pajak)
                 <div class="px-4 pb-4 text-xs text-base-content/60">Nomor seri faktur pajak: <span class="font-mono">{{ $faktur->no_faktur_pajak }}</span></div>
             @endif
+            @if ($faktur->tanggal_faktur_pajak || (float) $faktur->ppnbm > 0)
+                <div class="px-4 pb-4 text-xs text-base-content/60">
+                    Tanggal faktur pajak: {{ $faktur->tanggal_faktur_pajak?->format('d/m/Y') ?: '-' }}
+                    &middot; PPnBM: Rp {{ number_format($faktur->ppnbm, 2, ',', '.') }}
+                </div>
+            @endif
+            @if ($faktur->pembeli_nama)
+                <div class="px-4 pb-4 text-xs text-base-content/60">
+                    Identitas pembeli saat diposting: {{ $faktur->pembeli_nama }}
+                    &middot; NPWP {{ $faktur->pembeli_npwp ?: '-' }}
+                    &middot; NIK {{ $faktur->pembeli_nik ?: '-' }}
+                    &middot; NITKU {{ $faktur->pembeli_nitku ?: '-' }}
+                </div>
+            @endif
         </div>
 
         @can('terimaPembayaran', $faktur)

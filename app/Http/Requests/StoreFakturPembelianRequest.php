@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\FakturPembelian;
 use App\Models\PenerimaanBarang;
+use App\Rules\NsfpValid;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -40,7 +41,15 @@ class StoreFakturPembelianRequest extends FormRequest
             'no_faktur_pajak'         => [
                 Rule::requiredIf(fn () => $this->boolean('is_ppn')),
                 'nullable', 'string', 'max:30',
-                'regex:/^\d{3}\.\d{3}-\d{2}\.\d{8}$/',
+                new NsfpValid(),
+            ],
+            'tanggal_faktur_pajak'    => ['nullable', 'date'],
+            'ppnbm'                   => ['nullable', 'numeric', 'min:0', 'max:9999999999999999'],
+            'kode_objek_pajak'        => [
+                'nullable', 'string',
+                Rule::exists('wms_kode_objek_pajak', 'kode')
+                    ->where('is_active', true)
+                    ->where('jenis_pph', $this->input('jenis_pph')),
             ],
             'diskon'                  => 'nullable|numeric|min:0',
             'ongkir'                  => 'nullable|numeric|min:0',
@@ -79,5 +88,12 @@ class StoreFakturPembelianRequest extends FormRequest
                 );
             }
         }];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'kode_objek_pajak.exists' => 'Kode objek pajak tidak dikenal atau tidak sesuai dengan jenis PPh yang dipilih.',
+        ];
     }
 }

@@ -30,7 +30,10 @@ class FakturPembelian extends Model
         'tarif_ppn',
         'ppn',
         'no_faktur_pajak',
+        'tanggal_faktur_pajak',
+        'ppnbm',
         'jenis_pph',
+        'kode_objek_pajak',
         'dasar_pph',
         'tarif_pph',
         'diskon',
@@ -107,6 +110,8 @@ class FakturPembelian extends Model
 
     protected $casts = [
         'tanggal' => 'date',
+        'tanggal_faktur_pajak' => 'date',
+        'ppnbm' => 'decimal:2',
         'tgl_deadline_pembayaran' => 'date',
         'sub_total' => 'decimal:2',
         'ppn' => 'decimal:2',

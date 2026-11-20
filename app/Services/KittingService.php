@@ -39,8 +39,14 @@ class KittingService
 
     public function ketersediaan(Kit $kit, int $gudangId, float $jumlahKit): array
     {
-        return collect($this->kebutuhan($kit, $jumlahKit))->map(function ($baris) use ($gudangId) {
-            $saldo = StokGudang::where('gudang_id', $gudangId)->where('bahan_id', $baris['bahan_id'])->first();
+        $kebutuhan = collect($this->kebutuhan($kit, $jumlahKit));
+        $saldoPerBahan = StokGudang::where('gudang_id', $gudangId)
+            ->whereIn('bahan_id', $kebutuhan->pluck('bahan_id'))
+            ->get()
+            ->keyBy('bahan_id');
+
+        return $kebutuhan->map(function ($baris) use ($saldoPerBahan) {
+            $saldo = $saldoPerBahan->get($baris['bahan_id']);
             $bebas = $saldo ? (float) $saldo->stok_tersedia - (float) $saldo->stok_direservasi : 0.0;
 
             return $baris + [

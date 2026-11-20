@@ -26,10 +26,11 @@ class InventoryReversalService
         private DataPesananService $dataPesanan,
     ) {}
 
-    public function reverseNpk(PemakaianBarang $npk, string $reason): PembalikanDokumen
+    public function reverseNpk(PemakaianBarang $npk, string $reason, ?int $userId = null): PembalikanDokumen
     {
         $this->periods->assertOpen(now(), 'Reversal NPK');
-        return DB::transaction(function () use ($npk, $reason) {
+        return DB::transaction(function () use ($npk, $reason, $userId) {
+            $actorId = $userId ?? Auth::id();
             $npk = PemakaianBarang::lockForUpdate()->findOrFail($npk->id);
             $this->assertNotReversed('NPK', $npk->id);
             if ($npk->status !== PemakaianBarang::POSTED) throw new RuntimeException('Hanya NPK posted yang dapat dibalik.');
@@ -41,17 +42,18 @@ class InventoryReversalService
                 $this->dataPesanan->hapusBiaya($pesananProduksi, \App\Models\DataPesananBiaya::NPK, (int) $npk->id);
             }
             $this->accounting->restoreStock($npk, false);
-            $this->stock->masuk((int) $npk->id_gudang_asal, (int) $npk->id_barang, $quantity, $unitCost, 'REVERSAL_NPK', 'NPK', $npk->id, $reason);
+            $this->stock->masuk((int) $npk->id_gudang_asal, (int) $npk->id_barang, $quantity, $unitCost, 'REVERSAL_NPK', 'NPK', $npk->id, $reason, true, $actorId);
             $journal = $this->accounting->reverseAutomaticJournal('NPK', $npk->id, "Reversal NPK {$npk->kode}: {$reason}");
             $npk->update(['status' => PemakaianBarang::REVERSED]);
-            return $this->record('NPK', $npk->id, $reason, $journal->id);
+            return $this->record('NPK', $npk->id, $reason, $journal->id, $actorId);
         });
     }
 
-    public function reverseLpb(PenerimaanBarang $lpb, string $reason): PembalikanDokumen
+    public function reverseLpb(PenerimaanBarang $lpb, string $reason, ?int $userId = null): PembalikanDokumen
     {
         $this->periods->assertOpen(now(), 'Reversal LPB');
-        return DB::transaction(function () use ($lpb, $reason) {
+        return DB::transaction(function () use ($lpb, $reason, $userId) {
+            $actorId = $userId ?? Auth::id();
             $lpb = PenerimaanBarang::with('details')->lockForUpdate()->findOrFail($lpb->id);
             $this->assertNotReversed('LPB', $lpb->id);
             if ($lpb->status !== PenerimaanBarang::POSTED) throw new RuntimeException('Hanya LPB posted aktif yang dapat dibalik.');
@@ -62,7 +64,7 @@ class InventoryReversalService
                 if (abs((float) $layer->initial_quantity - (float) $layer->remaining_quantity) > 0.000001) {
                     throw new RuntimeException("Stok LPB {$lpb->id_lpb} sudah digunakan dan tidak dapat dibalik langsung.");
                 }
-                $this->stock->keluar((int) $lpb->gudang_id, (int) $detail->id_bahan, (float) $detail->jumlah_barang_diterima, (float) $detail->harga, 'REVERSAL_LPB', 'LPB', $lpb->id, $reason);
+                $this->stock->keluar((int) $lpb->gudang_id, (int) $detail->id_bahan, (float) $detail->jumlah_barang_diterima, (float) $detail->harga, 'REVERSAL_LPB', 'LPB', $lpb->id, $reason, true, $actorId);
                 $layer->update(['remaining_quantity' => 0, 'stock_status' => 'REVERSED']);
                 $poLine = PesananPembelianDetail::where('no_po', $lpb->no_po)->where('bahan_id', $detail->id_bahan)->lockForUpdate()->first();
                 if ($poLine) {
@@ -76,15 +78,16 @@ class InventoryReversalService
                 }
             }
             $journal = $this->accounting->reverseAutomaticJournal('LPB', $lpb->id, "Reversal LPB {$lpb->id_lpb}: {$reason}");
-            $lpb->update(['cancelled_by' => Auth::id(), 'cancelled_at' => now(), 'cancellation_reason' => $reason, 'status' => PenerimaanBarang::REVERSED]);
-            return $this->record('LPB', $lpb->id, $reason, $journal->id);
+            $lpb->update(['cancelled_by' => $actorId, 'cancelled_at' => now(), 'cancellation_reason' => $reason, 'status' => PenerimaanBarang::REVERSED]);
+            return $this->record('LPB', $lpb->id, $reason, $journal->id, $actorId);
         });
     }
 
-    public function reverseReturPembelian(ReturPembelian $retur, string $reason): PembalikanDokumen
+    public function reverseReturPembelian(ReturPembelian $retur, string $reason, ?int $userId = null): PembalikanDokumen
     {
         $this->periods->assertOpen(now(), 'Reversal retur pembelian');
-        return DB::transaction(function () use ($retur, $reason) {
+        return DB::transaction(function () use ($retur, $reason, $userId) {
+            $actorId = $userId ?? Auth::id();
             $retur = ReturPembelian::with('details')->lockForUpdate()->findOrFail($retur->id);
             $this->assertNotReversed('RETUR_PEMBELIAN', $retur->id);
             if ($retur->status !== ReturPembelian::POSTED) throw new RuntimeException('Hanya retur pembelian posted yang dapat dibalik.');
@@ -104,7 +107,7 @@ class InventoryReversalService
                     'jumlah_retur' => max(0, (float) $lpbDetail->jumlah_retur - (float) $detail->jumlah_retur),
                     'jumlah_tersisa' => (float) $lpbDetail->jumlah_tersisa + (float) $detail->jumlah_retur,
                 ]);
-                $this->stock->masuk((int) $lpb->gudang_id, (int) $lpbDetail->id_bahan, (float) $detail->jumlah_retur, (float) $detail->harga, 'REVERSAL_RETUR_PEMBELIAN', 'RETUR_PEMBELIAN', $retur->id, $reason);
+                $this->stock->masuk((int) $lpb->gudang_id, (int) $lpbDetail->id_bahan, (float) $detail->jumlah_retur, (float) $detail->harga, 'REVERSAL_RETUR_PEMBELIAN', 'RETUR_PEMBELIAN', $retur->id, $reason, true, $actorId);
             }
 
             if ($retur->invoice_id) {
@@ -120,7 +123,7 @@ class InventoryReversalService
             if ($retur->advance_payment_id) {
                 PembayaranFaktur::whereKey($retur->advance_payment_id)->update([
                     'status' => PembayaranFaktur::VOID,
-                    'voided_by' => Auth::id(),
+                    'voided_by' => $actorId,
                     'voided_at' => now(),
                     'void_reason' => "Retur pembelian {$retur->no_retur} dibalik: {$reason}",
                 ]);
@@ -128,7 +131,7 @@ class InventoryReversalService
 
             $journal = $this->accounting->reverseAutomaticJournal('RETUR_PEMBELIAN', $retur->id, "Reversal retur pembelian {$retur->no_retur}: {$reason}");
             $retur->update(['status' => ReturPembelian::REVERSED]);
-            return $this->record('RETUR_PEMBELIAN', $retur->id, $reason, $journal->id);
+            return $this->record('RETUR_PEMBELIAN', $retur->id, $reason, $journal->id, $actorId);
         });
     }
 
@@ -137,8 +140,8 @@ class InventoryReversalService
         if (PembalikanDokumen::where('document_type', $type)->where('document_id', $id)->exists()) throw new RuntimeException('Dokumen sudah pernah dibalik.');
     }
 
-    private function record(string $type, int $id, string $reason, int $journalId): PembalikanDokumen
+    private function record(string $type, int $id, string $reason, int $journalId, ?int $userId): PembalikanDokumen
     {
-        return PembalikanDokumen::create(['number' => $this->numbers->internal('RVS', 'DOC'), 'document_type' => $type, 'document_id' => $id, 'reason' => $reason, 'reversal_journal_id' => $journalId, 'created_by' => Auth::id(), 'posted_at' => now()]);
+        return PembalikanDokumen::create(['number' => $this->numbers->internal('RVS', 'DOC'), 'document_type' => $type, 'document_id' => $id, 'reason' => $reason, 'reversal_journal_id' => $journalId, 'created_by' => $userId, 'posted_at' => now()]);
     }
 }

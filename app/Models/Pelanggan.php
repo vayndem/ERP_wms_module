@@ -14,13 +14,14 @@ class Pelanggan extends Model
     protected $table = 'pelanggans';
 
     protected $fillable = [
-        'kode', 'nama', 'npwp', 'telp', 'email', 'alamat', 'up',
+        'kode', 'nama', 'npwp', 'nik', 'nitku', 'tipe_identitas', 'status_pkp', 'telp', 'email', 'alamat', 'up',
         'termin_hari', 'plafon_kredit', 'is_active',
     ];
 
     protected $casts = [
         'plafon_kredit' => 'decimal:2',
         'is_active' => 'boolean',
+        'status_pkp' => 'boolean',
     ];
 
     public function pesanan()

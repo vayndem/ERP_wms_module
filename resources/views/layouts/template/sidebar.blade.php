@@ -541,6 +541,15 @@
                         </a>
                     </li>
                 @endcan
+
+                @can('viewAny', App\Models\BuktiPotong::class)
+                    <li class="{{ request()->routeIs('bukti-potong.*') ? 'active' : '' }}">
+                        <a href="{{ route('bukti-potong.index') }}" class="svg-icon">
+                            <i class="fa-solid fa-file-invoice"></i>
+                            <span class="ms-2">Bukti Potong PPh</span>
+                        </a>
+                    </li>
+                @endcan
             </ul>
         </nav>
     </div>

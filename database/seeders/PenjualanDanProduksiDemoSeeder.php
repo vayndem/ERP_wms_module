@@ -65,12 +65,12 @@ class PenjualanDanProduksiDemoSeeder extends Seeder
 
         $pelangganProduksi = Pelanggan::updateOrCreate(
             ['kode' => 'CUST-001'],
-            ['nama' => 'PT Mitra Sejahtera', 'termin_hari' => 30, 'plafon_kredit' => 500000000, 'is_active' => true, 'alamat' => 'Kawasan Industri Pulogadung, Jakarta']
+            ['nama' => 'PT Mitra Sejahtera', 'npwp' => '0845678901234000', 'nitku' => '0845678901234000000000', 'tipe_identitas' => 'NPWP', 'status_pkp' => true, 'termin_hari' => 30, 'plafon_kredit' => 500000000, 'is_active' => true, 'alamat' => 'Kawasan Industri Pulogadung, Jakarta']
         );
 
         $pelangganDagang = Pelanggan::updateOrCreate(
             ['kode' => 'CUST-002'],
-            ['nama' => 'CV Karya Abadi', 'termin_hari' => 14, 'plafon_kredit' => 150000000, 'is_active' => true, 'alamat' => 'Jl. Raya Bekasi KM 21, Bekasi']
+            ['nama' => 'CV Karya Abadi', 'npwp' => '0856789012345000', 'nitku' => '0856789012345000000000', 'tipe_identitas' => 'NPWP', 'status_pkp' => true, 'termin_hari' => 14, 'plafon_kredit' => 150000000, 'is_active' => true, 'alamat' => 'Jl. Raya Bekasi KM 21, Bekasi']
         );
 
         $this->jalankan('dagang', fn () => $this->skenarioDagangJatuhTempo($pelangganDagang, $gudang, $sales, $akuntansi));

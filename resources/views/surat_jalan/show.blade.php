@@ -77,7 +77,15 @@
                         </div>
                         <div class="form-control">
                             <label class="label"><span class="label-text">Nomor Seri Faktur Pajak</span></label>
-                            <input type="text" name="no_faktur_pajak" placeholder="000.000-00.00000000" class="input input-bordered input-sm">
+                            <input type="text" name="no_faktur_pajak" value="{{ old('no_faktur_pajak') }}" placeholder="17 digit angka" maxlength="30" class="input input-bordered input-sm">
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Tanggal Faktur Pajak</span></label>
+                            <input type="date" name="tanggal_faktur_pajak" value="{{ old('tanggal_faktur_pajak') }}" class="input input-bordered input-sm">
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">PPnBM</span></label>
+                            <input type="number" step="0.01" min="0" name="ppnbm" value="{{ old('ppnbm', 0) }}" class="input input-bordered input-sm">
                         </div>
                     </div>
                     <div class="mt-3"><button type="submit" class="btn btn-primary btn-sm">Buat Faktur</button></div>

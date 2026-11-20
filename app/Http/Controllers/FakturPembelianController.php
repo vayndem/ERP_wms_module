@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FakturPembelian;
+use App\Models\KodeObjekPajak;
 use App\Models\PenerimaanBarang;
 use App\Models\Jurnal;
 use App\Http\Requests\StoreFakturPembelianRequest;
@@ -183,7 +184,8 @@ class FakturPembelianController extends Controller
             ->with(['pembelian.supplier', 'details', 'serviceDetails'])->orderBy('id_lpb', 'desc')->get();
         $supplierIds = $lpbs->pluck('pembelian.supplier_id')->filter()->unique()->values();
         $suppliers = Supplier::whereIn('id', $supplierIds)->orderBy('nama')->get();
-        return view('faktur_pembelian.create', compact('lpbs', 'suppliers'));
+        $kodeObjek = KodeObjekPajak::aktif()->orderBy('kode')->get(['kode', 'jenis_pph', 'deskripsi']);
+        return view('faktur_pembelian.create', compact('lpbs', 'suppliers', 'kodeObjek'));
     }
 
     public function getLpbDetail($id_lpb)
@@ -264,6 +266,9 @@ class FakturPembelianController extends Controller
                 'tarif_ppn'               => $ppnPercent,
                 'ppn'                     => $ppnNominal,
                 'no_faktur_pajak'         => $validated['no_faktur_pajak'] ?? null,
+                'tanggal_faktur_pajak'    => $validated['tanggal_faktur_pajak'] ?? null,
+                'ppnbm'                   => $validated['ppnbm'] ?? 0,
+                'kode_objek_pajak'        => $jenisPph ? ($validated['kode_objek_pajak'] ?? null) : null,
                 'jenis_pph'               => $jenisPph,
                 'dasar_pph'               => $jenisPph ? $subTotal : 0,
                 'tarif_pph'               => $pphPercent,
@@ -336,7 +341,8 @@ class FakturPembelianController extends Controller
             ->where(fn($query) => $query->whereNull('no_invoice')->orWhereIn('id', $invoice->lpbs->pluck('id')))
             ->whereHas('pembelian', fn($query) => $query->where('supplier_id', $invoice->kode_supplier))
             ->with(['pembelian.supplier', 'serviceDetails'])->get();
-        return view('faktur_pembelian.edit', compact('invoice', 'lpbs'));
+        $kodeObjek = KodeObjekPajak::aktif()->orderBy('kode')->get(['kode', 'jenis_pph', 'deskripsi']);
+        return view('faktur_pembelian.edit', compact('invoice', 'lpbs', 'kodeObjek'));
     }
 
     public function update(UpdateFakturPembelianRequest $request, $id)
@@ -383,6 +389,9 @@ class FakturPembelianController extends Controller
                 'tarif_ppn'               => $ppnPercent,
                 'ppn'                     => $ppnNominal,
                 'no_faktur_pajak'         => $validated['no_faktur_pajak'] ?? null,
+                'tanggal_faktur_pajak'    => $validated['tanggal_faktur_pajak'] ?? null,
+                'ppnbm'                   => $validated['ppnbm'] ?? 0,
+                'kode_objek_pajak'        => $jenisPph ? ($validated['kode_objek_pajak'] ?? null) : null,
                 'jenis_pph'               => $jenisPph,
                 'dasar_pph'               => $jenisPph ? $subTotal : 0,
                 'tarif_pph'               => $pphPercent,

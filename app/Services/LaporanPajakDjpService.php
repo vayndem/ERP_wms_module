@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\FakturPembelian;
+use App\Models\BuktiPotong;
+use App\Models\PembayaranFaktur;
+use Illuminate\Support\Carbon;
 use App\Models\FakturPenjualan;
 use Illuminate\Support\Collection;
 
@@ -10,6 +12,8 @@ class LaporanPajakDjpService
 {
     public const TEMPLATE_FAKTUR = 'Sample Faktur PK Template v.1.4.xml';
     public const CONVERTER_FAKTUR = 'ConverterEfakturCoretax v1.6 (23/01/2026)';
+
+    public function __construct(private BuktiPotongService $bukti) {}
 
     public function fakturKeluaran(string $masa): Collection
     {
@@ -47,31 +51,46 @@ class LaporanPajakDjpService
 
     public function buktiPotong(string $masa): Collection
     {
-        [$tahun, $bulan] = $this->pecahMasa($masa);
+        $pembayaran = $this->bukti->pembayaranBerpph($masa);
 
-        return FakturPembelian::with('supplier')
-            ->where('status', '!=', FakturPembelian::VOID)
-            ->where('pph', '>', 0)
-            ->whereYear('tanggal', $tahun)
-            ->whereMonth('tanggal', $bulan)
-            ->orderBy('tanggal')
+        $buktiPerPembayaran = BuktiPotong::whereIn('pembayaran_id', $pembayaran->pluck('id'))
+            ->whereIn('status', [BuktiPotong::DRAFT, BuktiPotong::DITERBITKAN])
             ->get()
-            ->map(fn (FakturPembelian $faktur) => [
+            ->keyBy('pembayaran_id');
+
+        return $pembayaran->map(function (PembayaranFaktur $bayar) use ($buktiPerPembayaran) {
+            $faktur = $bayar->invoice;
+            $supplier = $faktur->supplier;
+            $bukti = $buktiPerPembayaran->get($bayar->id);
+            $tarif = (float) $faktur->tarif_pph;
+            $potongan = round((float) $bayar->potongan_pph, 2);
+            $tanggal = Carbon::parse($bayar->tanggal_pembayaran);
+
+            $masalah = $bukti ? $this->bukti->masalahPenerbitan($bukti) : [];
+
+            return [
                 'nomor_invoice' => $faktur->no_invoice,
-                'tanggal' => $faktur->tanggal?->toDateString(),
-                'masa_pajak' => (int) $bulan,
-                'tahun_pajak' => (int) $tahun,
-                'npwp_lawan_transaksi' => $faktur->supplier?->npwp,
-                'nama_lawan_transaksi' => $faktur->supplier?->nama,
+                'nomor_pembayaran' => $bayar->payment_number,
+                'tanggal' => $tanggal->toDateString(),
+                'masa_pajak' => (int) $tanggal->format('n'),
+                'tahun_pajak' => (int) $tanggal->format('Y'),
+                'npwp_lawan_transaksi' => $bukti?->penerima_npwp ?? $supplier?->npwp,
+                'nama_lawan_transaksi' => $bukti?->penerima_nama ?? $supplier?->nama,
                 'jenis_pph' => $faktur->jenis_pph,
-                'dasar_pengenaan' => round((float) $faktur->dasar_pph, 2),
-                'tarif' => round((float) $faktur->tarif_pph, 4),
-                'pph_dipotong' => round((float) $faktur->pph, 2),
-                'siap_lapor' => !empty($faktur->supplier?->npwp) && (float) $faktur->pph > 0,
-                'catatan' => empty($faktur->supplier?->npwp)
-                    ? 'NPWP lawan transaksi belum diisi; Coretax menolak bukti potong tanpa identitas yang tervalidasi.'
-                    : null,
-            ]);
+                'dasar_pengenaan' => $tarif > 0 ? round($potongan / ($tarif / 100), 2) : round((float) $faktur->dasar_pph, 2),
+                'tarif' => round($tarif, 4),
+                'pph_dipotong' => $potongan,
+                'bukti_id' => $bukti?->id,
+                'status_bukti' => $bukti?->status,
+                'nomor_bukti_djp' => $bukti?->nomor_bukti_djp,
+                'siap_lapor' => $bukti !== null && $masalah === [],
+                'catatan' => match (true) {
+                    $bukti === null => 'Belum ada bukti potong; jalankan sinkronisasi di halaman Bukti Potong.',
+                    $masalah !== [] => implode(' ', $masalah),
+                    default => null,
+                },
+            ];
+        })->values();
     }
 
     public function ringkasan(string $masa): array

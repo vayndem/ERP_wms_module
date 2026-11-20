@@ -190,7 +190,7 @@ class PajakPenghasilanService
     {
         $coaId = AccountingSetting::accountId($key);
         $sum = JurnalDetail::where('coa_id', $coaId)
-            ->whereHas('jurnal', fn ($q) => $q->where('status', 'POSTED'))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku())
             ->selectRaw('SUM(debit) as debit, SUM(kredit) as kredit')->first();
 
         $debit = (float) ($sum->debit ?? 0);

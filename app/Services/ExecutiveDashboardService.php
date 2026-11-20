@@ -12,16 +12,22 @@ class ExecutiveDashboardService
     public function inventoryValueTrend(int $months = 6): array
     {
         $persediaanAccountIds = KategoriBahan::whereNotNull('coa_persediaan_id')->distinct()->pluck('coa_persediaan_id');
+        $monthEnds = collect(range($months - 1, 0))->map(fn ($i) => now()->subMonths($i)->endOfMonth());
+        $firstMonth = $monthEnds->first()->format('Y-m');
+        $movements = JurnalDetail::query()
+            ->join('wms_jurnal', 'wms_jurnal.id', '=', 'wms_jurnal_detail.jurnal_id')
+            ->whereIn('wms_jurnal_detail.coa_id', $persediaanAccountIds)
+            ->whereIn('wms_jurnal.status', ['POSTED', 'REVERSED'])
+            ->whereDate('wms_jurnal.tanggal', '<=', $monthEnds->last())
+            ->selectRaw("DATE_FORMAT(wms_jurnal.tanggal, '%Y-%m') as bulan, SUM(wms_jurnal_detail.debit - wms_jurnal_detail.kredit) as mutasi")
+            ->groupByRaw("DATE_FORMAT(wms_jurnal.tanggal, '%Y-%m')")
+            ->pluck('mutasi', 'bulan');
+        $balance = $movements->filter(fn ($nilai, $bulan) => $bulan < $firstMonth)->sum();
         $labels = [];
         $data = [];
 
-        for ($i = $months - 1; $i >= 0; $i--) {
-            $monthEnd = now()->subMonths($i)->endOfMonth();
-            $balance = JurnalDetail::query()
-                ->whereIn('coa_id', $persediaanAccountIds)
-                ->whereHas('jurnal', fn($query) => $query->where('status', 'POSTED')->whereDate('tanggal', '<=', $monthEnd))
-                ->selectRaw('SUM(debit - kredit) as balance')
-                ->value('balance');
+        foreach ($monthEnds as $monthEnd) {
+            $balance += (float) ($movements->get($monthEnd->format('Y-m')) ?? 0);
             $labels[] = $monthEnd->translatedFormat('M Y');
             $data[] = round((float) $balance, 2);
         }
@@ -86,7 +92,7 @@ class ExecutiveDashboardService
         $categories = KategoriBahan::whereNotNull('coa_beban_id')->get(['id', 'katnama', 'coa_beban_id']);
         $bebanSums = JurnalDetail::query()
             ->whereIn('coa_id', $categories->pluck('coa_beban_id')->unique())
-            ->whereHas('jurnal', fn($query) => $query->where('status', 'POSTED')->whereYear('tanggal', now()->year))
+            ->whereHas('jurnal', fn($query) => $query->berlaku()->whereYear('tanggal', now()->year))
             ->selectRaw('coa_id, SUM(debit) as total')
             ->groupBy('coa_id')
             ->get()
