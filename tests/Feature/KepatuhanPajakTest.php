@@ -199,6 +199,24 @@ class KepatuhanPajakTest extends TestCase
         $this->assertSame([$supplierA->nama], $hasil['temuan']->pluck('pihak')->unique()->values()->all());
     }
 
+    public function test_a_duplicate_nsfp_is_found_when_the_twin_sits_in_another_period_and_unrelated_duplicates_are_ignored(): void
+    {
+        $supplier = $this->supplier();
+        $nsfp = '01000000000000999';
+
+        $this->fakturBeli($supplier, ['no_faktur_pajak' => $nsfp]);
+        $this->fakturBeli($supplier, ['no_faktur_pajak' => $nsfp, 'tanggal' => '2031-01-10', 'tanggal_faktur_pajak' => '2031-01-10']);
+
+        $lain = $this->supplier();
+        $this->fakturBeli($lain, ['no_faktur_pajak' => '01000000000001111', 'tanggal' => '2031-02-10', 'tanggal_faktur_pajak' => '2031-02-10']);
+        $this->fakturBeli($lain, ['no_faktur_pajak' => '01000000000001111', 'tanggal' => '2031-02-11', 'tanggal_faktur_pajak' => '2031-02-11']);
+
+        $hasil = $this->periksa();
+
+        $this->assertSame(1, $hasil['ringkasan'][KepatuhanPajakService::NSFP_DUPLIKAT]);
+        $this->assertSame([$supplier->nama], $hasil['temuan']->where('kategori', KepatuhanPajakService::NSFP_DUPLIKAT)->pluck('pihak')->all());
+    }
+
     public function test_a_voided_purchase_invoice_does_not_make_its_nsfp_a_duplicate(): void
     {
         $supplier = $this->supplier();

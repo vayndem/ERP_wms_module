@@ -14,7 +14,7 @@ class FinancialStatementService
         $accounts = BaganAkun::orderBy('kode_akun')->get();
 
         $sums = JurnalDetail::query()
-            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereDate('tanggal', '<=', $asOf))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->where('tanggal', '<=', $asOf->toDateString()))
             ->selectRaw('coa_id, SUM(debit) as total_debit, SUM(kredit) as total_kredit')
             ->groupBy('coa_id')
             ->get()
@@ -47,7 +47,7 @@ class FinancialStatementService
         $sign = $account->posisi_normal === 'DEBIT' ? 1 : -1;
 
         $openingSum = JurnalDetail::where('coa_id', $account->id)
-            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereDate('tanggal', '<', $from))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->where('tanggal', '<', $from->toDateString()))
             ->selectRaw('SUM(debit) as debit, SUM(kredit) as kredit')
             ->first();
 
@@ -202,9 +202,9 @@ class FinancialStatementService
     {
         $sum = JurnalDetail::whereIn('coa_id', $kasIds)
             ->whereHas('jurnal', function ($q) use ($from, $to) {
-                $q->berlaku()->whereDate('tanggal', '<=', $to);
+                $q->berlaku()->where('tanggal', '<=', $to->toDateString());
                 if ($from) {
-                    $q->whereDate('tanggal', '>=', $from);
+                    $q->where('tanggal', '>=', $from->toDateString());
                 }
             })
             ->selectRaw('SUM(debit) as debit, SUM(kredit) as kredit')->first();
@@ -314,9 +314,9 @@ class FinancialStatementService
     {
         return JurnalDetail::whereIn('coa_id', $accountIds)
             ->whereHas('jurnal', function ($q) use ($from, $to) {
-                $q->berlaku()->whereDate('tanggal', '<=', $to);
+                $q->berlaku()->where('tanggal', '<=', $to->toDateString());
                 if ($from) {
-                    $q->whereDate('tanggal', '>=', $from);
+                    $q->where('tanggal', '>=', $from->toDateString());
                 }
             })
             ->selectRaw('coa_id, SUM(debit) as debit, SUM(kredit) as kredit')
@@ -331,7 +331,7 @@ class FinancialStatementService
 
         $net = JurnalDetail::query()
             ->whereIn('coa_id', $accountIds)
-            ->whereHas('jurnal', fn ($q) => $q->berlaku()->whereDate('tanggal', '<=', $asOf))
+            ->whereHas('jurnal', fn ($q) => $q->berlaku()->where('tanggal', '<=', $asOf->toDateString()))
             ->selectRaw('SUM(kredit) - SUM(debit) as net')
             ->value('net');
 

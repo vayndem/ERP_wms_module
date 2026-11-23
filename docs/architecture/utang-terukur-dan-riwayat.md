@@ -9,7 +9,7 @@ Semua angka di bawah **bertanggal dan bisa usang** (kebanyakan 2026-09-18, Larav
 Numbers here are **snapshots taken 2026-09-18** on Laravel 12.69 / PHP 8.3. Re-measure before relying on one; the commands that produced them are given so you can.
 
 > **Koreksi 2026-11-20 (diukur ulang dengan `grep`, bukan dengan menjalankan suite).**
-> - Model: 103 file di `app/Models`; 51 memuat `protected $guarded`, 50 memuat `protected $fillable` (`grep -l`). Angka 53/40 dari 94 di bawah usang.
+> - Model: 104 file di `app/Models` (`find`, diukur ulang 2026-11-23; sebelumnya tertulis 103); 51 memuat `protected $guarded`, 50 memuat `protected $fillable` (`grep -l`). Angka 53/40 dari 94 di bawah usang.
 > - Controller yang memuat `DB::transaction`: 18 file (`grep -l`). Angka lama menyebut 18 controller juga; tujuh yang menulis lintas model di bawah belum diperiksa ulang satu per satu.
 > - Service yang membaca `Auth::id()`/`Auth::user()`: 16 file, tetapi sejak `AtribusiAktorTest` (2026-11-20) bagian yang disebut di sana menerima aktor eksplisit dan `Auth` hanya fallback.
 > - Test: 52 kelas di `tests/Feature` dan 12 di `tests/Unit`, 441 method `test_*` (`grep`, bukan hasil lari). Jumlah per kelas dijaga di [jaring pengaman test](jaring-pengaman-test.md).

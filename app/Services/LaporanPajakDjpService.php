@@ -19,10 +19,15 @@ class LaporanPajakDjpService
     {
         [$tahun, $bulan] = $this->pecahMasa($masa);
 
+        if ($bulan < 1 || $bulan > 12) {
+            return collect();
+        }
+
+        [$awal, $akhir] = $this->bukti->rentang($masa);
+
         return FakturPenjualan::with(['pelanggan', 'details.bahan'])
             ->whereNotIn('status', [FakturPenjualan::DRAFT, FakturPenjualan::VOID])
-            ->whereYear('tanggal', $tahun)
-            ->whereMonth('tanggal', $bulan)
+            ->whereBetween('tanggal', [$awal, $akhir])
             ->orderBy('tanggal')
             ->get()
             ->map(fn (FakturPenjualan $faktur) => [
@@ -49,9 +54,9 @@ class LaporanPajakDjpService
             ]);
     }
 
-    public function buktiPotong(string $masa): Collection
+    public function buktiPotong(string $masa, ?Collection $pembayaranBerpph = null): Collection
     {
-        $pembayaran = $this->bukti->pembayaranBerpph($masa);
+        $pembayaran = $pembayaranBerpph ?? $this->bukti->pembayaranBerpph($masa);
 
         $buktiPerPembayaran = BuktiPotong::whereIn('pembayaran_id', $pembayaran->pluck('id'))
             ->whereIn('status', [BuktiPotong::DRAFT, BuktiPotong::DITERBITKAN])
@@ -93,10 +98,10 @@ class LaporanPajakDjpService
         })->values();
     }
 
-    public function ringkasan(string $masa): array
+    public function ringkasan(string $masa, ?Collection $pembayaranBerpph = null): array
     {
         $faktur = $this->fakturKeluaran($masa);
-        $bupot = $this->buktiPotong($masa);
+        $bupot = $this->buktiPotong($masa, $pembayaranBerpph);
 
         return [
             'masa' => $masa,

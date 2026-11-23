@@ -15,6 +15,7 @@ Daftar ini diverifikasi terhadap kode pada 2026-11-20 dan sejalan dengan "Open-i
 | KEP-007 | `NPWP_PERUSAHAAN` dan `NITKU_PERUSAHAAN` di konfigurasi | ⛔ | `config/app.php`, `.env.example` | — |
 | KEP-008 | Barcode / QR untuk putaway dan picking | ⛔ | keputusan user 2026-09-13: ditunda; bila dikerjakan, per bundling/kit, bukan per item | — |
 | KEP-009 | Menamai ulang 21 tabel domain yang belum berawalan `wms_` | ⛔ | [utang terukur](../architecture/utang-terukur-dan-riwayat.md) | — |
+| KEP-010 | Format validator NSFP (17 digit vs 13 digit), pembanding unik NSFP, dan NIK/NITKU sebagai penolakan keras atau peringatan | ⛔ | `IdentitasPajak::nsfpValid`, `NsfpValid`, `MengaturIdentitasPajak` | — |
 
 ## KEP-001: NSFP sebelum posting atau sesudah unggah Coretax
 
@@ -78,3 +79,10 @@ Daftar ini diverifikasi terhadap kode pada 2026-11-20 dan sejalan dengan "Open-i
 - **Pilihan.** biarkan, atau satu proyek rename terkoordinasi.
 - **Dampak.** menyentuh setiap model, string `DB::table`, seeder, endpoint Yajra, dan JS; ukur ulang jumlah tabelnya dengan `SHOW TABLES` sebelum merencanakan.
 - **Pemilik keputusan.** pemilik produk dan teknis.
+
+## KEP-010: Validator NSFP dan identitas pajak
+
+- **Konteks.** Temuan review 2026-11-23, belum diputuskan dan belum diubah di kode. (1) `IdentitasPajak::nsfpValid` menerima 17 digit polos dan bentuk lama `000.000-00.00000000`; review menandai kemungkinan bahwa format resmi adalah 13 digit (label [T], belum diverifikasi dengan sumber resmi). (2) Keunikan NSFP faktur penjualan (`faktur_penjualan_nsfp_unique` dan `Rule::unique`) membandingkan string mentah: nomor yang sama dalam bentuk bertitik dan polos dianggap berbeda. (3) NIK 16 digit dan NITKU 22 digit ditolak keras oleh Form Request (`NikValid`, `NitkuValid`) sehingga master supplier/pelanggan tidak bisa disimpan; review melabelinya [B] dan mempertanyakan apakah cukup berupa peringatan, mengingat panjang NITKU dan strukturnya belum terverifikasi.
+- **Pilihan.** (a) Biarkan validator sekarang. (b) Ganti atau tambah format NSFP setelah sumber resmi diverifikasi, dan samakan bentuk sebelum membandingkan keunikan. (c) NIK/NITKU tetap penolakan keras, atau turun menjadi peringatan di preflight.
+- **Dampak.** (b) menyentuh data NSFP yang sudah tersimpan dan indeks unik; (c) menyentuh form master dan `KepatuhanPajakService`. Tidak mengubah jurnal.
+- **Pemilik keputusan.** pemilik produk; format NSFP perlu rujukan resmi DJP.

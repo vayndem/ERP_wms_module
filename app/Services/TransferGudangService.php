@@ -65,9 +65,10 @@ class TransferGudangService
         });
     }
 
-    public function terima(TransferGudang $transfer, array $received = [], ?string $notes = null, array $locations = []): TransferGudang
+    public function terima(TransferGudang $transfer, array $received = [], ?string $notes = null, array $locations = [], ?int $userId = null): TransferGudang
     {
-        return DB::transaction(function () use ($transfer, $received, $notes, $locations) {
+        return DB::transaction(function () use ($transfer, $received, $notes, $locations, $userId) {
+            $actorId = $userId ?? Auth::id();
             $transfer = TransferGudang::with('details.alokasi')->lockForUpdate()->findOrFail($transfer->id);
             if ($transfer->status !== TransferGudang::DIKIRIM) throw new RuntimeException('Hanya transfer dalam perjalanan yang dapat diterima.');
             $this->operations->claim('TRANSFER_GUDANG', $transfer->id, 'RECEIVE');
@@ -94,13 +95,13 @@ class TransferGudangService
                     else $layer->update(['remaining_quantity' => 0, 'initial_quantity' => 0, 'stock_status' => 'TRANSFER_SHORTAGE']);
                     $remaining -= $release;
                 }
-                if ($quantity > 0) $this->stok->masuk($tujuan->id, $detail->bahan_id, $quantity, $average, $tujuan->jenis === Gudang::CONSIDER ? 'CONSIDER_MASUK' : 'TRANSFER_MASUK', 'TRANSFER_GUDANG', $transfer->id, $transfer->nomor_transfer, false);
+                if ($quantity > 0) $this->stok->masuk($tujuan->id, $detail->bahan_id, $quantity, $average, $tujuan->jenis === Gudang::CONSIDER ? 'CONSIDER_MASUK' : 'TRANSFER_MASUK', 'TRANSFER_GUDANG', $transfer->id, $transfer->nomor_transfer, false, $actorId);
                 $selisih = round((float) $detail->jumlah_dikirim - $quantity, 6);
                 if ($selisih > 0) Bahan::whereKey($detail->bahan_id)->decrement('stok_onhand', $selisih);
                 $detail->update(['jumlah_diterima' => $quantity, 'jumlah_selisih' => $selisih]);
             }
             $tanggalTerima = now();
-            $transfer->update(['status' => TransferGudang::DITERIMA, 'diterima_oleh' => Auth::id(), 'diterima_pada' => $tanggalTerima, 'catatan_penerimaan' => $notes, 'dikonfirmasi_oleh' => Auth::id(), 'dikonfirmasi_pada' => $tanggalTerima]);
+            $transfer->update(['status' => TransferGudang::DITERIMA, 'diterima_oleh' => $actorId, 'diterima_pada' => $tanggalTerima, 'catatan_penerimaan' => $notes, 'dikonfirmasi_oleh' => $actorId, 'dikonfirmasi_pada' => $tanggalTerima]);
             $this->akuntansi->postPenerimaanTransfer($transfer, $tanggalTerima->toDateString());
             return $transfer->fresh('details');
         });

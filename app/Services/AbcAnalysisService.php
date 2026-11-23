@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PengaturanBahanGudang;
 use App\Models\StockOpname;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -103,6 +104,7 @@ class AbcAnalysisService
                 ->where('status', StockOpname::POSTED)
                 ->max('posted_at');
 
+            $terakhir = $terakhir ? Carbon::parse($terakhir) : null;
             $batas = now()->subMonths($bulan);
             $jatuhTempo[$kelas] = [
                 'kelas' => $kelas,
@@ -110,7 +112,7 @@ class AbcAnalysisService
                 'siklus_bulan' => $bulan,
                 'terakhir' => $terakhir,
                 'jatuh_tempo' => $terakhir === null || $terakhir < $batas,
-                'hari_sejak' => $terakhir ? (int) now()->diffInDays($terakhir) : null,
+                'hari_sejak' => $terakhir ? (int) $terakhir->diffInDays(now()) : null,
             ];
         }
 

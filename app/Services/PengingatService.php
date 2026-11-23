@@ -6,7 +6,6 @@ use App\Models\CrossDock;
 use App\Models\DataPesanan;
 use App\Models\FakturPembelian;
 use App\Models\FakturPenjualan;
-use App\Models\LayerPersediaan;
 use App\Models\MaterialRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -68,28 +67,32 @@ class PengingatService
 
     public function lotSegeraKedaluwarsa(?array $warehouseIds = null, int $limit = 5): Collection
     {
-        $rows = LayerPersediaan::with(['lot.bahan', 'gudang'])
-            ->where('remaining_quantity', '>', 0)
-            ->where('stock_status', 'AVAILABLE')
-            ->when($warehouseIds !== null, fn ($query) => $query->whereIn('gudang_id', $warehouseIds))
-            ->whereHas('lot', fn ($lot) => $lot->whereNotNull('expires_at')
-                ->whereDate('expires_at', '<=', today()->addDays(self::AMBANG_KEDALUWARSA_HARI)))
-            ->get()
-            ->groupBy('inventory_lot_id')
-            ->map(fn ($layers) => [
-                'lot' => $layers->first()->lot,
-                'gudang' => $layers->first()->gudang,
-                'sisa' => (float) $layers->sum('remaining_quantity'),
-            ])
-            ->sortBy(fn ($row) => $row['lot']->expires_at)
-            ->take($limit);
+        $rows = DB::table('wms_layer_persediaan as lapisan')
+            ->join('wms_lot_persediaan as lot', 'lot.id', '=', 'lapisan.inventory_lot_id')
+            ->join('bahans as bahan', 'bahan.id', '=', 'lot.bahan_id')
+            ->join('gudangs as gudang', 'gudang.id', '=', 'lapisan.gudang_id')
+            ->where('lapisan.remaining_quantity', '>', 0)
+            ->where('lapisan.stock_status', 'AVAILABLE')
+            ->when($warehouseIds !== null, fn ($query) => $query->whereIn('lapisan.gudang_id', $warehouseIds))
+            ->whereNotNull('lot.expires_at')
+            ->whereDate('lot.expires_at', '<=', today()->addDays(self::AMBANG_KEDALUWARSA_HARI))
+            ->groupBy('lot.id', 'lot.lot_number', 'lot.expires_at', 'bahan.nama', 'gudang.id', 'gudang.nama')
+            ->orderBy('lot.expires_at')
+            ->limit($limit)
+            ->get([
+                'lot.lot_number',
+                'lot.expires_at',
+                'bahan.nama as bahan_nama',
+                'gudang.nama as gudang_nama',
+                DB::raw('SUM(lapisan.remaining_quantity) as sisa'),
+            ]);
 
         return $this->urutkan($rows->map(fn ($row) => $this->susun(
             'Lot kedaluwarsa',
-            ($row['lot']->bahan->nama ?? 'Bahan') . ' · lot ' . $row['lot']->lot_number . ' · ' . ($row['gudang']->nama ?? '-'),
-            $row['lot']->expires_at,
+            $row->bahan_nama . ' · lot ' . $row->lot_number . ' · ' . $row->gudang_nama,
+            $row->expires_at,
             route('wms-control.index'),
-            $row['sisa'],
+            (float) $row->sisa,
         ))->all());
     }
 

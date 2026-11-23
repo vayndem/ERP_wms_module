@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FakturPembelian;
+use App\Models\Jurnal;
 use App\Models\JurnalDetail;
 use App\Models\KategoriBahan;
 use Illuminate\Support\Carbon;
@@ -17,7 +18,7 @@ class ExecutiveDashboardService
         $movements = JurnalDetail::query()
             ->join('wms_jurnal', 'wms_jurnal.id', '=', 'wms_jurnal_detail.jurnal_id')
             ->whereIn('wms_jurnal_detail.coa_id', $persediaanAccountIds)
-            ->whereIn('wms_jurnal.status', ['POSTED', 'REVERSED'])
+            ->whereIn('wms_jurnal.status', Jurnal::STATUS_BERLAKU)
             ->whereDate('wms_jurnal.tanggal', '<=', $monthEnds->last())
             ->selectRaw("DATE_FORMAT(wms_jurnal.tanggal, '%Y-%m') as bulan, SUM(wms_jurnal_detail.debit - wms_jurnal_detail.kredit) as mutasi")
             ->groupByRaw("DATE_FORMAT(wms_jurnal.tanggal, '%Y-%m')")

@@ -103,7 +103,7 @@ class TransferGudangController extends Controller
     public function receive(ReceiveTransferGudangRequest $request, TransferGudang $transferGudang)
     {
         $data = $request->validated();
-        $this->service->terima($transferGudang, $data['received'] ?? [], $data['notes'] ?? null, $data['locations'] ?? []);
+        $this->service->terima($transferGudang, $data['received'] ?? [], $data['notes'] ?? null, $data['locations'] ?? [], $request->user()->id);
         return back()->with('success', 'Transfer diterima; stok tujuan dan selisih penerimaan telah dicatat.');
     }
     private function formData(): array

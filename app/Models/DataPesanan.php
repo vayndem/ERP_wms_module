@@ -100,6 +100,41 @@ class DataPesanan extends Model
             ->sum('hpp'), 2);
     }
 
+    public static function saldoWipBatch(iterable $pesanan): float
+    {
+        return round(array_sum(static::saldoWipPerId($pesanan)), 2);
+    }
+
+    public static function saldoWipPerId(iterable $pesanan): array
+    {
+        $pesanan = collect($pesanan);
+
+        if ($pesanan->isEmpty()) {
+            return [];
+        }
+
+        $biaya = DataPesananBiaya::whereIn('data_pesanan_id', $pesanan->pluck('id'))
+            ->groupBy('data_pesanan_id')
+            ->selectRaw('data_pesanan_id, SUM(nilai) as total')
+            ->pluck('total', 'data_pesanan_id');
+
+        $dilepas = SuratJalanDetail::query()
+            ->join('wms_surat_jalan as sj', 'sj.id', '=', 'wms_surat_jalan_detail.surat_jalan_id')
+            ->whereIn('sj.status', [SuratJalan::DRAFT, SuratJalan::POSTED])
+            ->whereIn('wms_surat_jalan_detail.data_pesanan_id', $pesanan->pluck('id'))
+            ->groupBy('wms_surat_jalan_detail.data_pesanan_id')
+            ->selectRaw('wms_surat_jalan_detail.data_pesanan_id as data_pesanan_id, SUM(wms_surat_jalan_detail.hpp) as total')
+            ->pluck('total', 'data_pesanan_id');
+
+        return $pesanan->mapWithKeys(function (DataPesanan $item) use ($biaya, $dilepas) {
+            $total = round((float) ($biaya[$item->id] ?? 0), 2);
+
+            return [$item->id => $item->sudahSelesai()
+                ? round($total - round((float) ($dilepas[$item->id] ?? 0), 2), 2)
+                : $total];
+        })->all();
+    }
+
     public function scopeBerjalan($query)
     {
         return $query->whereIn('status', [self::DRAFT, self::DIRILIS, self::SELESAI]);

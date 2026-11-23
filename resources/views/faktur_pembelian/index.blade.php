@@ -128,7 +128,7 @@
             </div>
 
             <dialog x-ref="showDialog" class="modal">
-                <div class="modal-box max-w-5xl p-0 overflow-hidden" x-show="invoice">
+                <div class="modal-box max-w-5xl p-0" x-show="invoice">
                     <div class="flex items-center justify-between bg-info px-6 py-4 text-info-content">
                         <h3 class="text-lg font-bold"><i class="fa-solid fa-file-invoice-dollar"></i> Invoice: <span x-text="invoice?.no_invoice"></span></h3>
                     </div>

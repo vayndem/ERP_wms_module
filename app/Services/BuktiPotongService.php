@@ -176,14 +176,8 @@ class BuktiPotongService
 
         if (blank($bukti->kode_objek_pajak)) {
             $masalah[] = 'Kode objek pajak belum diisi pada faktur pembelian sumber.';
-        } else {
-            $kode = $this->kodeAktif($bukti->kode_objek_pajak);
-
-            if (!$kode) {
-                $masalah[] = 'Kode objek pajak ' . $bukti->kode_objek_pajak . ' tidak dikenal atau tidak aktif.';
-            } elseif ($kode->jenis_pph !== $bukti->jenis_pph) {
-                $masalah[] = 'Kode objek pajak ' . $bukti->kode_objek_pajak . ' adalah milik ' . $kode->jenis_pph . ', bukan ' . $bukti->jenis_pph . '.';
-            }
+        } elseif ($masalahKode = $this->masalahKodeObjek($bukti)) {
+            $masalah[] = $masalahKode;
         }
 
         if ((float) $bukti->jumlah_pph <= 0 || (float) $bukti->dasar_pengenaan <= 0) {
@@ -191,6 +185,25 @@ class BuktiPotongService
         }
 
         return $masalah;
+    }
+
+    public function masalahKodeObjek(BuktiPotong $bukti): ?string
+    {
+        if (blank($bukti->kode_objek_pajak)) {
+            return null;
+        }
+
+        $kode = $this->kodeAktif($bukti->kode_objek_pajak);
+
+        if (!$kode) {
+            return 'Kode objek pajak ' . $bukti->kode_objek_pajak . ' tidak dikenal atau tidak aktif.';
+        }
+
+        if ($kode->jenis_pph !== $bukti->jenis_pph) {
+            return 'Kode objek pajak ' . $bukti->kode_objek_pajak . ' adalah milik ' . $kode->jenis_pph . ', bukan ' . $bukti->jenis_pph . '.';
+        }
+
+        return null;
     }
 
     public function masalahIdentitas(BuktiPotong $bukti): array
@@ -261,13 +274,21 @@ class BuktiPotongService
                 throw new RuntimeException('Nomor bukti potong ' . $nomor . ' sudah dipakai bukti potong lain.');
             }
 
-            $bukti->update([
-                'status' => BuktiPotong::DITERBITKAN,
-                'nomor_bukti_djp' => $nomor,
-                'tanggal_diterbitkan' => $tanggalDiterbitkan ?: today()->toDateString(),
-                'diterbitkan_oleh' => $oleh->id,
-                'diterbitkan_pada' => now(),
-            ]);
+            try {
+                $bukti->update([
+                    'status' => BuktiPotong::DITERBITKAN,
+                    'nomor_bukti_djp' => $nomor,
+                    'tanggal_diterbitkan' => $tanggalDiterbitkan ?: today()->toDateString(),
+                    'diterbitkan_oleh' => $oleh->id,
+                    'diterbitkan_pada' => now(),
+                ]);
+            } catch (QueryException $e) {
+                if ($e->getCode() !== '23000') {
+                    throw $e;
+                }
+
+                throw new RuntimeException('Nomor bukti potong ' . $nomor . ' sudah dipakai bukti potong lain.');
+            }
 
             return $bukti;
         });

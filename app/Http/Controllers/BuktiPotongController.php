@@ -27,14 +27,15 @@ class BuktiPotongController extends Controller
 
         $masa = $request->masa();
         $status = $request->statusFilter();
+        $hasil = $kepatuhan->periksa($masa);
 
         return view('bukti_potong.index', [
             'masa' => $masa,
             'status' => $status ?? 'SEMUA',
             'daftar' => $this->bukti->daftar($masa, $status),
             'tieOut' => $this->bukti->tieOut($masa),
-            'penghalang' => $this->ekspor->penghalang($masa),
-            'temuan' => $kepatuhan->temuanBuktiPotong($masa),
+            'penghalang' => $this->ekspor->penghalang($masa, $hasil),
+            'temuan' => $kepatuhan->temuanBuktiPotongDari($hasil),
             'peringatanXml' => BuktiPotongExportService::PERINGATAN,
             'pilihanStatus' => BuktiPotongExportService::STATUS_PILIHAN,
         ]);

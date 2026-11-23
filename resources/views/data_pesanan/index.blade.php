@@ -60,7 +60,7 @@
                                 <td class="text-end">{{ number_format($baris->jumlah_rencana, 2, ',', '.') }}</td>
                                 <td class="text-end">{{ number_format($baris->jumlah_selesai, 2, ',', '.') }}</td>
                                 <td class="text-end">{{ number_format($baris->jumlah_terkirim, 2, ',', '.') }}</td>
-                                <td class="text-end font-semibold">Rp {{ number_format($baris->saldoWip(), 0, ',', '.') }}</td>
+                                <td class="text-end font-semibold">Rp {{ number_format($saldoWip[$baris->id] ?? 0, 0, ',', '.') }}</td>
                                 <td>
                                     <span class="badge {{ $baris->status === 'DITUTUP' ? 'badge-success' : ($baris->status === 'DIBATALKAN' ? 'badge-error' : ($baris->status === 'SELESAI' ? 'badge-info' : 'badge-warning')) }}">{{ $baris->status }}</span>
                                 </td>

@@ -69,6 +69,8 @@ Ditambahkan ke grup `web` di `bootstrap/app.php`. Akun yang dinonaktifkan **saat
 
 Audit login tidak ditulis di controller. `CatatAktivitasAutentikasi` mendengarkan `Login`, `Logout`, `PasswordReset`, `Failed` dan memanggil `UserAccountService::catatLogin/…`, jadi **setiap** jalur autentikasi tercakup (termasuk reset password), bukan hanya satu form. `AuthKontrakTest` menegaskan satu reset password menulis tepat satu baris audit.
 
+Setelah password diganti lewat `ResetPasswordController::reset`, semua token Sanctum pengguna dicabut (`$user->tokens()->delete()`) dan, bila `SESSION_DRIVER=database`, baris sesi pengguna itu di tabel sesi dihapus sehingga sesi lain ikut keluar. Dengan driver `file` atau `cookie` sesi lain tidak bisa dicabut dari server; `remember_token` sudah diganti sehingga cookie ingat-saya lama tidak berlaku.
+
 ### `withEvents(discover: false)`
 
 Laravel 12 mendaftarkan `EventServiceProvider`-nya sendiri yang menemukan listener di `app/Listeners` secara otomatis. Dibiarkan menyala, tiap listener `CatatAktivitasAutentikasi` terikat **dua kali**: setiap login gagal menulis dua baris audit dan tes throttle gagal di separuh jumlah percobaan. Aplikasi memakai peta `$listen` eksplisit di `App\Providers\EventServiceProvider`, jadi penemuan otomatis harus mati (`bootstrap/app.php` dan `shouldDiscoverEvents()` mengembalikan `false`).
@@ -94,7 +96,7 @@ Halaman memakai fetch/Yajra/modal, sehingga sesi habis muncul sebagai respons 40
 | Tes | Mengunci |
 |---|---|
 | `PlatformHardeningTest` | audit login/gagal, throttle, nonaktif, manajemen pengguna hanya Super Admin, ganti password, scheduler terdaftar |
-| `AuthKontrakTest` | redirect pengguna login, satu baris audit reset, sesi akun nonaktif ditolak (401 JSON) |
+| `AuthKontrakTest` | redirect pengguna login, satu baris audit reset, reset password mencabut semua token Sanctum pengguna itu, sesi akun nonaktif ditolak (401 JSON) |
 | `AuthCelahTest` | token Sanctum valid/tidak valid/dicabut, sesi setelah logout/nonaktif, policy user, limit 20 per IP, remember me |
 | `AksesPerRoleTest` | halaman yang harus bisa dan tidak boleh dibuka per role |
 | `AtribusiAktorTest` | aktor eksplisit tanpa sesi |

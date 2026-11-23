@@ -121,6 +121,9 @@ class KonsistensiTemaTest extends TestCase
                 "Grafik harus membaca token daisyUI {$token} dari CSS, bukan menebak warna."
             );
         }
+
+        $this->assertStringContainsString("document.querySelectorAll('[data-task-chart]')", $isi);
+        $this->assertStringNotContainsString('this.$refs.canvas', $isi, 'Instance Chart.js tidak boleh masuk proxy reaktif Alpine karena memicu error resolver di browser.');
     }
 
     public function test_both_themes_exist_and_keep_their_elevation_ramp(): void

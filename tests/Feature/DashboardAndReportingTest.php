@@ -97,10 +97,19 @@ class DashboardAndReportingTest extends TestCase
 
         foreach ($roles as $role => $expectedHeading) {
             $user = User::factory()->create(['type' => $role]);
+            \Illuminate\Support\Facades\DB::flushQueryLog();
+            \Illuminate\Support\Facades\DB::enableQueryLog();
+
             $this->actingAs($user)->get(route('dashboard'))
                 ->assertOk()
                 ->assertSee($expectedHeading)
+                ->assertSee('Tugas Saya')
+                ->assertSee('Tenggat Terdekat')
                 ->assertSee('Progres Pekerjaan');
+
+            $jumlahQuery = count(\Illuminate\Support\Facades\DB::getQueryLog());
+            \Illuminate\Support\Facades\DB::disableQueryLog();
+            $this->assertLessThan(90, $jumlahQuery, "Dashboard role {$role} memakai {$jumlahQuery} query.");
         }
     }
 
@@ -108,6 +117,14 @@ class DashboardAndReportingTest extends TestCase
     {
         $warehouse = User::factory()->create(['type' => User::ROLE_WAREHOUSE]);
         $layer = LayerPersediaan::where('remaining_quantity', '>', 0)->where('stock_status', 'AVAILABLE')->firstOrFail();
+        \App\Models\PembagianGudang::create([
+            'user_id' => $warehouse->id,
+            'gudang_id' => $layer->gudang_id,
+            'boleh_menerima' => true,
+            'boleh_npk' => true,
+            'boleh_transfer' => true,
+            'boleh_opname' => true,
+        ]);
         $lot = \App\Models\LotPersediaan::create([
             'bahan_id' => $layer->bahan_id,
             'lot_number' => 'DASH-REMINDER-1',
@@ -118,7 +135,7 @@ class DashboardAndReportingTest extends TestCase
 
         $this->actingAs($warehouse)->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Kedaluwarsa &amp; Transfer Menggantung', false)
+            ->assertSee('Tenggat Terdekat')
             ->assertSee('DASH-REMINDER-1')
             ->assertSee('5 hari lagi');
 

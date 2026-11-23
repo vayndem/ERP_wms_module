@@ -60,10 +60,11 @@ class AsetAccountingService
         );
     }
 
-    public function depreciate(Aset $asset, array $data): PenyusutanAset
+    public function depreciate(Aset $asset, array $data, ?int $userId = null): PenyusutanAset
     {
         $this->periods->assertOpen($data['posting_date'], 'Penyusutan aset');
-        return DB::transaction(function () use ($asset, $data) {
+        return DB::transaction(function () use ($asset, $data, $userId) {
+            $actorId = $userId ?? Auth::id();
             $asset = Aset::with('category')->lockForUpdate()->findOrFail($asset->id);
             if ($asset->status !== Aset::ACTIVE) throw new RuntimeException('Hanya aset aktif yang dapat disusutkan.');
             if ($asset->depreciations()->where('period_label', $data['period_label'])->exists()) {
@@ -88,7 +89,7 @@ class AsetAccountingService
                 'book_value_before' => $asset->book_value,
                 'book_value_after' => $maximum + $asset->residual_value - $amount,
                 'reason' => $data['reason'] ?? null,
-                'posted_by' => Auth::id(),
+                'posted_by' => $actorId,
             ]);
             $journal = $this->post(
                 "DEP-{$asset->nomor_aset}-{$depreciation->id}",
@@ -99,7 +100,8 @@ class AsetAccountingService
                 [
                     ['coa_id' => $asset->category->depreciation_expense_coa_id, 'debit' => $amount, 'kredit' => 0, 'keterangan' => 'Beban penyusutan'],
                     ['coa_id' => $asset->category->accumulated_depreciation_coa_id, 'debit' => 0, 'kredit' => $amount, 'keterangan' => 'Akumulasi penyusutan'],
-                ]
+                ],
+                $actorId
             );
             $depreciation->update(['journal_id' => $journal->id]);
             $asset->update([
@@ -266,8 +268,9 @@ class AsetAccountingService
         ])->id;
     }
 
-    private function post(string $number, $date, string $source, int $referenceId, string $description, array $lines): Jurnal
+    private function post(string $number, $date, string $source, int $referenceId, string $description, array $lines, ?int $userId = null): Jurnal
     {
+        $userId ??= Auth::id();
         $lines = collect($lines)->filter(fn($line) => $line['debit'] > 0 || $line['kredit'] > 0)->values();
         $debit = round($lines->sum('debit'), 2);
         $credit = round($lines->sum('kredit'), 2);
@@ -281,8 +284,8 @@ class AsetAccountingService
             'tanggal' => $date,
             'keterangan' => $description,
             'status' => 'POSTED',
-            'created_by' => Auth::id(),
-            'posted_by' => Auth::id(),
+            'created_by' => $userId,
+            'posted_by' => $userId,
             'posted_at' => now(),
             'total_debit' => $debit,
             'total_kredit' => $credit,

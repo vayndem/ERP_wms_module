@@ -69,7 +69,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="9" class="py-6 text-center text-base-content/50">Belum ada pelanggan.</td></tr>
+                            <tr><td colspan="11" class="py-6 text-center text-base-content/50">Belum ada pelanggan.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

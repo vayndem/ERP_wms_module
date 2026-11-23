@@ -37,6 +37,7 @@ class DataPesananController extends Controller
             'pesanan' => $pesanan,
             'status' => $status,
             'totalWip' => $this->produksi->saldoWipSeluruh(),
+            'saldoWip' => DataPesanan::saldoWipPerId($pesanan->items()),
         ]);
     }
 

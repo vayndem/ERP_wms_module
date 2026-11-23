@@ -8,18 +8,21 @@ use App\Models\FakturPembelian;
 use App\Models\Gudang;
 use App\Models\LayerPersediaan;
 use App\Models\MutasiStok;
+use App\Models\PenyusutanAset;
 use App\Models\Pelanggan;
 use App\Models\PelepasanAset;
 use App\Models\PemakaianBarang;
 use App\Models\PembayaranFaktur;
 use App\Models\PenerimaanBarang;
 use App\Models\ReturPembelian;
+use App\Models\TransferGudang;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\AsetAccountingService;
 use App\Services\InventoryReversalService;
 use App\Services\PlafonKreditService;
 use App\Services\StokGudangService;
+use App\Services\TransferGudangService;
 use App\Services\ThreeWayMatchService;
 use App\Services\WarehouseExecutionService;
 use App\Services\WmsAccountingService;
@@ -126,6 +129,39 @@ class AtribusiAktorTest extends TestCase
         ], $aktor->id);
         $this->assertSame($aktor->id, (int) $pelepasan->disposed_by);
         $this->assertSame($aktor->id, (int) $pelepasan->uangMuka->finance_user_id);
+    }
+
+    public function test_penyusutan_aset_mencatat_aktor_eksplisit_tanpa_sesi(): void
+    {
+        $aktor = User::factory()->create(['type' => User::ROLE_ACCOUNTING]);
+        $aset = Aset::where('status', Aset::ACTIVE)->whereHas('category')->where('residual_value', '>=', 0)->get()
+            ->first(fn (Aset $item) => $item->suggestedMonthlyDepreciation() > 0 && (float) $item->book_value - (float) $item->residual_value > $item->suggestedMonthlyDepreciation());
+        $this->assertNotNull($aset);
+        Auth::logout();
+
+        $penyusutan = app(AsetAccountingService::class)->depreciate($aset, [
+            'posting_date' => today()->toDateString(),
+            'period_label' => 'ATR-'.$aktor->id,
+            'reason' => 'Uji aktor eksplisit',
+        ], $aktor->id);
+
+        $this->assertSame($aktor->id, (int) $penyusutan->posted_by);
+        $this->assertSame($aktor->id, (int) $penyusutan->journal->created_by);
+        $this->assertSame($aktor->id, (int) $penyusutan->journal->posted_by);
+    }
+
+    public function test_penerimaan_transfer_mencatat_aktor_eksplisit_tanpa_sesi(): void
+    {
+        $aktor = User::factory()->create(['type' => User::ROLE_ACCOUNTING]);
+        $transfer = TransferGudang::where('status', TransferGudang::DIKIRIM)->first();
+
+        $this->assertNotNull($transfer, 'Data demo harus memiliki transfer yang sedang dikirim.');
+        Auth::logout();
+        $hasil = app(TransferGudangService::class)->terima($transfer, [], null, [], $aktor->id);
+
+        $this->assertSame($aktor->id, (int) $hasil->diterima_oleh);
+        $this->assertSame($aktor->id, (int) $hasil->dikonfirmasi_oleh);
+        $this->assertSame($aktor->id, (int) MutasiStok::where('referensi_id', $transfer->id)->whereIn('jenis_mutasi', ['TRANSFER_MASUK', 'CONSIDER_MASUK'])->latest('id')->value('user_id'));
     }
 
     public function test_plafon_kredit_memakai_gate_dan_super_admin_tetap_lolos(): void

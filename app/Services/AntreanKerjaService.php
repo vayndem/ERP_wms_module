@@ -28,14 +28,7 @@ class AntreanKerjaService
             ];
         }
 
-        $antrean = collect()
-            ->merge($this->qcMenunggu($gudangIds))
-            ->merge($this->putawayMenunggu($gudangIds))
-            ->merge($this->pickMenunggu($gudangIds))
-            ->merge($this->transferMenunggu($gudangIds))
-            ->merge($this->opnameBerjalan($gudangIds))
-            ->sortBy('urutan')
-            ->values();
+        $antrean = $this->antreanUntukGudang($gudangIds);
 
         return [
             'gudang_ids' => $gudangIds,
@@ -44,6 +37,27 @@ class AntreanKerjaService
             'jadwal_siklus' => $this->siklus->papanJadwal($gudangIds),
             'ringkasan' => $antrean->groupBy('jenis')->map->count()->all(),
         ];
+    }
+
+    public function antreanUtama(User $user, int $limit = 10): Collection
+    {
+        $gudangIds = $user->accessibleGudangIds();
+
+        return $gudangIds === []
+            ? collect()
+            : $this->antreanUntukGudang($gudangIds)->take($limit)->values();
+    }
+
+    private function antreanUntukGudang(array $gudangIds): Collection
+    {
+        return collect()
+            ->merge($this->qcMenunggu($gudangIds))
+            ->merge($this->putawayMenunggu($gudangIds))
+            ->merge($this->pickMenunggu($gudangIds))
+            ->merge($this->transferMenunggu($gudangIds))
+            ->merge($this->opnameBerjalan($gudangIds))
+            ->sortBy('urutan')
+            ->values();
     }
 
     private function baris(string $jenis, string $label, string $judul, string $detail, string $url, int $urutan, string $tone): array

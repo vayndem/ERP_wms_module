@@ -426,7 +426,7 @@ class WmsAccountingService
         );
     }
 
-    public function postSuratJalan(SuratJalan $suratJalan): Jurnal
+    public function postSuratJalan(SuratJalan $suratJalan): ?Jurnal
     {
         $this->periods->assertOpen($suratJalan->tanggal, 'Surat jalan');
         $suratJalan->loadMissing('details.bahan.tipeBarang');
@@ -458,6 +458,10 @@ class WmsAccountingService
             $totalHpp += $hppProduksi;
             $this->line($lines, AccountingSetting::accountId(AccountingSetting::BARANG_DALAM_PROSES), 0, $hppProduksi,
                 "Pelepasan barang dalam proses (surat jalan {$suratJalan->nomor})", $suratJalan->gudang_id);
+        }
+
+        if ($totalHpp <= 0 && $dariProduksi->isNotEmpty() && $dariStok->isEmpty()) {
+            return null;
         }
 
         if ($totalHpp <= 0) {

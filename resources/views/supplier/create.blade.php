@@ -1,5 +1,5 @@
 <dialog id="supplierCreateModal" class="modal">
-    <div class="modal-box max-w-2xl p-0 overflow-hidden">
+    <div class="modal-box max-w-2xl p-0">
         <div class="flex items-center gap-3 bg-primary px-6 py-4 text-primary-content">
             <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-content/20">
                 <i class="fa-solid fa-truck-field"></i>

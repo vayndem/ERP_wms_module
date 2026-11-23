@@ -141,7 +141,7 @@ class AsetController extends Controller
     }
     public function depreciate(StorePenyusutanAsetRequest $request, Aset $aset)
     {
-        $this->accounting->depreciate($aset, $request->validated());
+        $this->accounting->depreciate($aset, $request->validated(), $request->user()->id);
         return back()->with('success', 'Penyusutan berhasil diposting.');
     }
     public function dispose(StorePelepasanAsetRequest $request, Aset $aset)

@@ -50,6 +50,26 @@ class AuthKontrakTest extends TestCase
         );
     }
 
+    public function test_password_reset_revokes_every_sanctum_token_of_that_user(): void
+    {
+        $user = User::factory()->create(['type' => User::ROLE_WAREHOUSE]);
+        $lain = User::factory()->create(['type' => User::ROLE_WAREHOUSE]);
+        $user->createToken('ponsel');
+        $user->createToken('laptop');
+        $lain->createToken('ponsel');
+        $token = Password::createToken($user);
+
+        $this->post(route('password.update'), [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'RahasiaBaru9',
+            'password_confirmation' => 'RahasiaBaru9',
+        ])->assertRedirect(route('login'));
+
+        $this->assertSame(0, $user->tokens()->count());
+        $this->assertSame(1, $lain->tokens()->count());
+    }
+
     public function test_reset_link_request_issues_no_separate_existence_query_and_keeps_neutral_message(): void
     {
         Notification::fake();
