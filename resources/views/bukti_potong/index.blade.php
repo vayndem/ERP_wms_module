@@ -6,7 +6,7 @@
             <div>
                 <h3 class="text-2xl font-bold">Bukti Potong PPh 23 dan PPh 4(2)</h3>
                 <p class="text-base-content/60">
-                    Sumber fakta adalah pembayaran POSTED (tanggal pembayaran = masa pajak), bukan agregat pada faktur.
+                    Sumber fakta adalah pembayaran @include('bukti_potong._status-label', ['statusCode' => 'POSTED']) (tanggal pembayaran = masa pajak), bukan agregat pada faktur.
                     Nomor resmi diterbitkan DJP/Coretax dan dicatat manual di sini.
                 </p>
             </div>
@@ -35,7 +35,7 @@
                     <label class="label"><span class="label-text">Status</span></label>
                     <select name="status" class="select select-bordered select-sm">
                         @foreach (['SEMUA', 'DRAFT', 'DITERBITKAN', 'DIBATALKAN', 'DIGANTI'] as $opsi)
-                            <option value="{{ $opsi }}" @selected($status === $opsi)>{{ $opsi }}</option>
+                            <option value="{{ $opsi }}" @selected($status === $opsi)>@include('bukti_potong._status-label', ['statusCode' => $opsi])</option>
                         @endforeach
                     </select>
                 </div>
@@ -46,7 +46,7 @@
         <div class="card mb-4 border border-base-300 bg-base-100 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-4">
                 <h4 class="font-semibold">Tie-out ke Buku Besar</h4>
-                <span class="text-xs text-base-content/60">Bukti DRAFT + DITERBITKAN vs kredit bersih akun Hutang PPh dari jurnal pembayaran</span>
+                <span class="text-xs text-base-content/60">Bukti draf + diterbitkan vs kredit bersih akun Hutang PPh dari jurnal pembayaran</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="table table-sm">
@@ -125,7 +125,7 @@
                                 <td class="text-end">Rp {{ number_format((float) $baris->jumlah_pph, 2, ',', '.') }}</td>
                                 <td class="font-mono text-xs">{{ $baris->pembayaran?->payment_number }}</td>
                                 <td>
-                                    <span class="badge badge-sm {{ match ($baris->status) { 'DITERBITKAN' => 'badge-success', 'DRAFT' => 'badge-ghost', default => 'badge-neutral' } }}">{{ $baris->status }}</span>
+                                    <span class="badge badge-sm {{ match ($baris->status) { 'DITERBITKAN' => 'badge-success', 'DRAFT' => 'badge-ghost', default => 'badge-neutral' } }}">@include('bukti_potong._status-label', ['statusCode' => $baris->status])</span>
                                     @if ($baris->perlu_pembatalan)
                                         <span class="badge badge-error badge-sm">perlu dibatalkan</span>
                                     @endif
@@ -159,7 +159,7 @@
                         <label class="label"><span class="label-text">Sertakan bukti berstatus</span></label>
                         <select name="status" class="select select-bordered select-sm">
                             @foreach ($pilihanStatus as $opsi)
-                                <option value="{{ $opsi }}">{{ $opsi === 'SEMUA' ? 'DRAFT dan DITERBITKAN' : $opsi }}</option>
+                                <option value="{{ $opsi }}">@include('bukti_potong._status-label', ['statusCode' => $opsi]){{ $opsi === 'SEMUA' ? ' (draf dan diterbitkan)' : '' }}</option>
                             @endforeach
                         </select>
                     </div>

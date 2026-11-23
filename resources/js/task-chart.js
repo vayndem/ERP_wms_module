@@ -24,22 +24,19 @@ function terapkanWarna(chart, warna) {
 
     Object.values(skala).forEach((sumbu) => {
         if (!sumbu || typeof sumbu !== 'object') return;
-        sumbu.ticks = Object.assign({}, sumbu.ticks, { color: warna.teksRedup });
-        sumbu.grid = Object.assign({}, sumbu.grid, { color: warna.grid, borderColor: warna.grid });
-        sumbu.border = Object.assign({}, sumbu.border, { color: warna.grid });
+        sumbu.ticks.color = warna.teksRedup;
+        sumbu.grid.color = warna.grid;
+        sumbu.grid.borderColor = warna.grid;
+        sumbu.border.color = warna.grid;
     });
 
     chart.options.plugins = chart.options.plugins || {};
-    chart.options.plugins.legend = Object.assign({}, chart.options.plugins.legend, {
-        labels: Object.assign({}, chart.options.plugins.legend?.labels, { color: warna.teks }),
-    });
-    chart.options.plugins.tooltip = Object.assign({}, chart.options.plugins.tooltip, {
-        backgroundColor: warna.tooltipLatar,
-        titleColor: warna.tooltipTeks,
-        bodyColor: warna.tooltipTeks,
-        borderColor: warna.grid,
-        borderWidth: 1,
-    });
+    chart.options.plugins.legend.labels.color = warna.teks;
+    chart.options.plugins.tooltip.backgroundColor = warna.tooltipLatar;
+    chart.options.plugins.tooltip.titleColor = warna.tooltipTeks;
+    chart.options.plugins.tooltip.bodyColor = warna.tooltipTeks;
+    chart.options.plugins.tooltip.borderColor = warna.grid;
+    chart.options.plugins.tooltip.borderWidth = 1;
 
     chart.data.datasets.forEach((dataset) => {
         if (dataset.type === 'line' || chart.config.type === 'line') return;
@@ -48,17 +45,18 @@ function terapkanWarna(chart, warna) {
     });
 }
 
-export default function taskChart(config) {
-    return {
-        chart: null,
-        pendengarTema: null,
-        init() {
-            const labels = config.labels || [];
-            const data = config.data || [];
-            const type = config.type || 'bar';
-            const warna = warnaTema();
+export default function initTaskCharts() {
+    document.querySelectorAll('[data-task-chart]').forEach((wadah) => {
+        const config = JSON.parse(wadah.dataset.chartConfig || '{}');
+        const canvas = wadah.querySelector('canvas');
 
-            this.chart = new Chart(this.$refs.canvas, {
+        if (!canvas) return;
+
+        const labels = config.labels || [];
+        const data = config.data || [];
+        const type = config.type || 'bar';
+        const warna = warnaTema();
+        const chart = new Chart(canvas, {
                 type,
                 data: {
                     labels,
@@ -82,30 +80,18 @@ export default function taskChart(config) {
                         y: config.horizontal ? {} : { beginAtZero: config.beginAtZero !== false, ticks: { precision: 0 } },
                     } : {},
                 },
-            });
+        });
 
-            terapkanWarna(this.chart, warna);
-            this.chart.update('none');
+        terapkanWarna(chart, warna);
+        chart.update('none');
 
-            this.pendengarTema = () => {
-                if (!this.chart) return;
-                const baru = warnaTema();
-                this.chart.options.color = baru.teks;
-                terapkanWarna(this.chart, baru);
-                this.chart.update('none');
-            };
+        const pendengarTema = () => {
+            const baru = warnaTema();
+            chart.options.color = baru.teks;
+            terapkanWarna(chart, baru);
+            chart.update('none');
+        };
 
-            window.addEventListener('inventory:theme-changed', this.pendengarTema);
-        },
-        destroy() {
-            if (this.pendengarTema) {
-                window.removeEventListener('inventory:theme-changed', this.pendengarTema);
-            }
-
-            if (this.chart) {
-                this.chart.destroy();
-                this.chart = null;
-            }
-        },
-    };
+        window.addEventListener('inventory:theme-changed', pendengarTema, { passive: true });
+    });
 }

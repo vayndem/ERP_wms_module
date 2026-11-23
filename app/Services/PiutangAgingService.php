@@ -43,7 +43,7 @@ class PiutangAgingService
     {
         $faktur = FakturPenjualan::with('pelanggan')
             ->whereNotIn('status', [FakturPenjualan::DRAFT, FakturPenjualan::VOID])
-            ->whereDate('tanggal', '<=', $perTanggal)
+            ->where('tanggal', '<=', $perTanggal->toDateString())
             ->when($pelangganId, fn ($query) => $query->where('pelanggan_id', $pelangganId))
             ->orderBy('tanggal')
             ->get();
@@ -56,14 +56,14 @@ class PiutangAgingService
 
         $dibayar = PenerimaanPembayaran::whereIn('faktur_penjualan_id', $ids)
             ->where('status', PenerimaanPembayaran::POSTED)
-            ->whereDate('tanggal', '<=', $perTanggal)
+            ->where('tanggal', '<=', $perTanggal->toDateString())
             ->selectRaw('faktur_penjualan_id, SUM(jumlah) as total')
             ->groupBy('faktur_penjualan_id')
             ->pluck('total', 'faktur_penjualan_id');
 
         $returSesudah = ReturPenjualan::whereIn('faktur_penjualan_id', $ids)
             ->where('status', ReturPenjualan::POSTED)
-            ->whereDate('tanggal', '>', $perTanggal)
+            ->where('tanggal', '>', $perTanggal->toDateString())
             ->selectRaw('faktur_penjualan_id, SUM(total_dpp + total_ppn) as total')
             ->groupBy('faktur_penjualan_id')
             ->pluck('total', 'faktur_penjualan_id');
@@ -158,7 +158,7 @@ class PiutangAgingService
         $saldoGl = round((float) JurnalDetail::where('coa_id', $coaId)
             ->whereHas('jurnal', fn ($query) => $query
                 ->berlaku()
-                ->whereDate('tanggal', '<=', $perTanggal))
+                ->where('tanggal', '<=', $perTanggal->toDateString()))
             ->selectRaw('SUM(debit - kredit) as saldo')
             ->value('saldo'), 2);
 

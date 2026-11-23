@@ -238,7 +238,7 @@ class PenjualanService
             ]);
 
             $jurnal = $this->akuntansi->postSuratJalan($suratJalan->fresh('details.bahan.tipeBarang'));
-            $suratJalan->update(['journal_id' => $jurnal->id]);
+            $suratJalan->update(['journal_id' => $jurnal?->id]);
 
             $this->sinkronStatusPesanan($suratJalan->pesanan);
 

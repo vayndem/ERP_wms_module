@@ -25,11 +25,14 @@ class DashboardService
     public const AMBANG_JATUH_TEMPO_HARI = PengingatService::AMBANG_JATUH_TEMPO_HARI;
     private const TTL_REKONSILIASI = 300;
 
-    public function __construct(private PengingatService $pengingatan) {}
+    public function __construct(
+        private PengingatService $pengingatan,
+        private AntreanKerjaService $antreanKerja,
+    ) {}
 
     public function untuk(User $user): array
     {
-        return match (true) {
+        $papan = match (true) {
             $user->isSuperAdmin() => ['view' => 'dashboard', 'data' => $this->superAdmin()],
             $user->isPurchasing() => ['view' => 'purchasing.dashboard', 'data' => $this->purchasing()],
             $user->isFinance() => ['view' => 'finance.payment-dashboard', 'data' => $this->finance()],
@@ -38,6 +41,99 @@ class DashboardService
             $user->isAccounting() || $user->isAccountingManager() => ['view' => 'accounting.dashboard', 'data' => $this->akuntansi($user)],
             default => ['view' => 'dashboard', 'data' => []],
         };
+
+        $papan['data'] = $this->lengkapiKerangka($user, $papan['data']);
+
+        return $papan;
+    }
+
+    private function lengkapiKerangka(User $user, array $data): array
+    {
+        $pengingat = collect($data['reminders'] ?? []);
+
+        if ($user->isSuperAdmin()) {
+            $pengingat = $pengingat
+                ->merge($this->pengingatan->requestMenungguPersetujuan(6))
+                ->merge($this->pengingatan->invoiceMenungguPersetujuan(6));
+        } elseif ($user->isPurchasing()) {
+            $pengingat = $pengingat->merge($this->pengingatan->requestMenungguPersetujuan(8));
+        } elseif ($user->isAccountingManager()) {
+            $pengingat = $pengingat->merge($this->pengingatan->invoiceMenungguPersetujuan(8));
+        }
+
+        if ($user->isWarehouse() || $user->isProduction()) {
+            $antrean = $this->antreanKerja->antreanUtama($user)->map(fn (array $item) => [
+                'konteks' => $item['label'],
+                'label' => $item['judul'] . ' · ' . $item['detail'],
+                'tanggal' => today(),
+                'hari' => 0,
+                'url' => $item['url'],
+                'nilai' => null,
+            ]);
+            $pengingat = $pengingat->merge($antrean);
+        }
+
+        $pengingat = $pengingat
+            ->filter()
+            ->sortBy('hari')
+            ->unique(fn (array $item) => $item['konteks'] . '|' . $item['label'])
+            ->take(16)
+            ->values();
+
+        $tugas = $pengingat->map(function (array $item): array {
+            $hari = (int) $item['hari'];
+            [$kelompok, $relatif, $tone] = match (true) {
+                $hari < 0 => ['Lewat tenggat', 'lewat ' . abs($hari) . ' hari', 'error'],
+                $hari === 0 => ['Hari ini', 'hari ini', 'warning'],
+                $hari <= 7 => ['Minggu ini', $hari . ' hari lagi', 'info'],
+                default => ['Nanti', $hari . ' hari lagi', 'neutral'],
+            };
+
+            return [
+                'kelompok' => $kelompok,
+                'jenis' => $item['konteks'],
+                'nomor' => $item['label'],
+                'nilai' => $item['nilai'],
+                'tanggal' => $item['tanggal'],
+                'relatif' => $relatif,
+                'tone' => $tone,
+                'url' => $item['url'],
+            ];
+        });
+
+        $urutanKelompok = ['Lewat tenggat', 'Hari ini', 'Minggu ini', 'Nanti'];
+        $kelompokTugas = collect($urutanKelompok)->mapWithKeys(fn (string $kelompok) => [
+            $kelompok => $tugas->where('kelompok', $kelompok)->values(),
+        ]);
+        $kpi = collect($data['tasks'] ?? [])->take(4)->values();
+        $lewat = $tugas->where('kelompok', 'Lewat tenggat')->count();
+        $hariIni = $tugas->where('kelompok', 'Hari ini')->count();
+        [$namaPeran, $judulLama, $deskripsi] = match (true) {
+            $user->isSuperAdmin() => ['Lintas Divisi', 'Seluruh Tugas Terbuka', 'Prioritas operasional dan kontrol lintas divisi.'],
+            $user->isPurchasing() => ['Purchasing', 'Semua Tugas Purchasing', 'Permintaan, pemesanan, penerimaan, dan tagihan supplier.'],
+            $user->isFinance() => ['Finance', 'Semua Tugas Finance', 'Prioritas pembayaran dan arus kas yang perlu ditindaklanjuti.'],
+            $user->isWarehouse() => ['Gudang', 'Semua Tugas Gudang', 'Antrean penerimaan, penyimpanan, pengambilan, dan kontrol stok.'],
+            $user->isProduction() => ['Produksi', 'Semua Tugas Produksi', 'Pemakaian, transfer, opname, dan pekerjaan produksi aktif.'],
+            default => ['Accounting', 'Semua Tugas Accounting', 'Persetujuan, jurnal, rekonsiliasi, dan kontrol akuntansi.'],
+        };
+
+        return array_merge($data, [
+            'reminders' => $pengingat,
+            'dashboard' => [
+                'nama_peran' => $namaPeran,
+                'judul_lama' => $judulLama,
+                'deskripsi' => $deskripsi,
+                'tanggal' => now()->locale('id')->translatedFormat('l, d F Y'),
+                'ringkasan' => $hariIni . ' tugas hari ini, ' . $lewat . ' lewat tenggat.',
+                'kpi' => $kpi,
+                'kelompok_tugas' => $kelompokTugas,
+                'jumlah_tugas' => $tugas->count(),
+                'grafik' => [
+                    'labels' => $urutanKelompok,
+                    'data' => collect($urutanKelompok)->map(fn (string $kelompok) => $tugas->where('kelompok', $kelompok)->count())->all(),
+                ],
+            ],
+        ]);
     }
 
     private function progres(string $label, float $selesai, float $total, string $catatan = ''): array
@@ -256,19 +352,30 @@ class DashboardService
 
     private function gudang(User $user): array
     {
-        $stockAttention = Bahan::whereColumn('stok_onhand', '<=', 'planning')->count();
-        $receiptsToday = PenerimaanBarang::whereDate('tanggal', today())->count();
-        $issuesToday = PemakaianBarang::whereDate('tanggal', today())->count();
+        $warehouseIds = $user->accessibleGudangIds();
+        $stockAttention = DB::query()->fromSub(
+            DB::table('stok_gudangs as sg')
+                ->join('bahans as b', 'b.id', '=', 'sg.bahan_id')
+                ->whereIn('sg.gudang_id', $warehouseIds)
+                ->select('sg.bahan_id')
+                ->groupBy('sg.bahan_id', 'b.planning')
+                ->havingRaw('SUM(sg.stok_tersedia) <= b.planning'),
+            'stok_per_bahan'
+        )->count();
+        $receiptsToday = PenerimaanBarang::whereIn('gudang_id', $warehouseIds)->whereDate('tanggal', today())->count();
+        $issuesToday = PemakaianBarang::whereIn('id_gudang_asal', $warehouseIds)->whereDate('tanggal', today())->count();
         $statusOpnameTerbuka = [StockOpname::DRAFT, StockOpname::REJECTED, StockOpname::SUBMITTED, StockOpname::APPROVED];
-        $openOpnames = StockOpname::whereIn('status', $statusOpnameTerbuka)->count();
-        $serviceBapsToday = PenerimaanJasa::whereDate('tanggal', today())->count();
-        $transfersInProgress = DB::table('transfer_gudangs')->whereIn('status', ['DRAFT', 'DIAJUKAN', 'DIKIRIM'])->count();
+        $openOpnames = StockOpname::whereIn('warehouse_id', $warehouseIds)->whereIn('status', $statusOpnameTerbuka)->count();
+        $serviceBapsToday = PenerimaanJasa::whereIn('gudang_id', $warehouseIds)->whereDate('tanggal', today())->count();
+        $transfersInProgress = DB::table('transfer_gudangs')
+            ->where(fn ($query) => $query->whereIn('gudang_asal_id', $warehouseIds)->orWhereIn('gudang_tujuan_id', $warehouseIds))
+            ->whereIn('status', ['DRAFT', 'DIAJUKAN', 'DIKIRIM'])->count();
         $myPendingRequests = MaterialRequest::where('requested_by', $user->id)->where('status', MaterialRequest::PENDING)->count();
-        $expiry = $this->hitungKedaluwarsa();
+        $expiry = $this->hitungKedaluwarsa($warehouseIds);
 
-        $putawayTertunda = PenerimaanBarang::where('document_type', 'GOODS')->where('receiving_status', '!=', 'PUTAWAY')->count();
-        $totalPenerimaan = PenerimaanBarang::where('document_type', 'GOODS')->count();
-        $opnameSelesai = StockOpname::where('status', StockOpname::POSTED)->count();
+        $putawayTertunda = PenerimaanBarang::whereIn('gudang_id', $warehouseIds)->where('document_type', 'GOODS')->where('receiving_status', '!=', 'PUTAWAY')->count();
+        $totalPenerimaan = PenerimaanBarang::whereIn('gudang_id', $warehouseIds)->where('document_type', 'GOODS')->count();
+        $opnameSelesai = StockOpname::whereIn('warehouse_id', $warehouseIds)->where('status', StockOpname::POSTED)->count();
 
         return [
             'tasks' => collect([
@@ -283,9 +390,9 @@ class DashboardService
                 ['label' => 'Transfer Gudang Berjalan', 'count' => $transfersInProgress, 'url' => route('transfer-gudangs.index'), 'icon' => 'fa-truck-fast', 'tone' => 'info'],
                 ['label' => 'Request Saya Menunggu Approval', 'count' => $myPendingRequests, 'url' => route('request.index'), 'icon' => 'fa-file-circle-question', 'tone' => 'neutral'],
             ]),
-            'reminders' => $this->pengingatan->lotSegeraKedaluwarsa()
-                ->merge($this->pengingatan->transferMenggantung())
-                ->merge($this->pengingatan->crossDockBasi())
+            'reminders' => $this->pengingatan->lotSegeraKedaluwarsa($warehouseIds)
+                ->merge($this->pengingatan->transferMenggantung($warehouseIds))
+                ->merge($this->pengingatan->crossDockBasi($warehouseIds))
                 ->merge($this->pengingatan->subkontrakBelumKembali())
                 ->sortBy('hari')->values(),
             'progress' => [
@@ -293,15 +400,15 @@ class DashboardService
                 $this->progres('Stock Opname Selesai', (float) $opnameSelesai, (float) ($opnameSelesai + $openOpnames), 'Opname berstatus POSTED dibanding yang masih berjalan'),
             ],
             'warehouseMetrics' => [
-                'total_materials' => Bahan::count(),
+                'total_materials' => DB::table('stok_gudangs')->whereIn('gudang_id', $warehouseIds)->distinct()->count('bahan_id'),
                 'stock_attention' => $stockAttention,
                 'receipts_today' => $receiptsToday,
                 'issues_today' => $issuesToday,
                 'open_opnames' => $openOpnames,
                 'service_baps_today' => $serviceBapsToday,
             ],
-            'recentReceipts' => PenerimaanBarang::with('pembelian.supplier')->latest('tanggal')->latest('id')->limit(5)->get(),
-            'recentIssues' => PemakaianBarang::with('barang')->latest('tanggal')->latest('id')->limit(5)->get(),
+            'recentReceipts' => PenerimaanBarang::with('pembelian.supplier')->whereIn('gudang_id', $warehouseIds)->latest('tanggal')->latest('id')->limit(5)->get(),
+            'recentIssues' => PemakaianBarang::with('barang')->whereIn('id_gudang_asal', $warehouseIds)->latest('tanggal')->latest('id')->limit(5)->get(),
         ];
     }
 

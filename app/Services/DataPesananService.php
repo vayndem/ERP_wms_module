@@ -147,7 +147,10 @@ class DataPesananService
 
         $nilai = $menghabiskan
             ? max(0.0, round($pesanan->totalBiaya() - $pesanan->totalDilepas(), 2))
-            : round($jumlah * (float) $pesanan->biaya_per_unit, 2);
+            : min(
+                round($jumlah * (float) $pesanan->biaya_per_unit, 2),
+                max(0.0, round($pesanan->totalBiaya() - $pesanan->totalDilepas(), 2))
+            );
 
         $pesanan->update([
             'jumlah_terkirim' => round((float) $pesanan->jumlah_terkirim + $jumlah, 6),
@@ -211,9 +214,6 @@ class DataPesananService
 
     public function saldoWipSeluruh(): float
     {
-        return round(
-            DataPesanan::berjalan()->get()->sum(fn (DataPesanan $pesanan) => $pesanan->saldoWip()),
-            2
-        );
+        return DataPesanan::saldoWipBatch(DataPesanan::berjalan()->get());
     }
 }

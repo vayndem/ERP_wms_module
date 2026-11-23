@@ -62,7 +62,7 @@ Semuanya diverifikasi di kode pada 2026-11-20. "Dampak" adalah dugaan peninjau b
 - **ALG-012 (S5).** `checks()` menaruh nilai layer sebagai `amount` tanpa `expected`; pembanding nilai hanya di halaman rekonsiliasi gudang, tanpa alarm.
 - **ALG-013 (S8).** `0,1 + 0,7 < 0,8` bernilai benar di float (`0.7999999999999999`), jadi NPK yang menghabiskan tepat seluruh stok ditolak. `ambilLayer` memakai toleransi 0,000001; `consumeStock` tidak.
 - **ALG-014 (S9).** `wms_jurnal` hanya punya PK, `no_jurnal` unik, dan `(sumber_transaksi, reff_id)` unik; tidak ada indeks `tanggal` atau `(status, tanggal)`. Semua laporan memfilter keduanya lewat `whereHas('jurnal', …)` dengan `whereDate`, yang tidak memakai indeks. Buku besar memuat semua baris satu akun ke memori tanpa paginasi.
-- **ALG-015 (S10).** `DataPesanan::berjalan()->get()->sum(saldoWip())` melakukan query per perintah kerja; `akumulasiSelisih()` satu query per faktur valas; `PiutangAgingService` memuat semua faktur non-draft lalu `whereIn`. `TanpaNPlusSatuTest` sudah menutup pola ini untuk halaman, bukan untuk jalur-jalur ini.
+- **ALG-015 (S10).** *(sebagian, 2026-11-23: jalur WIP kini batch lewat `DataPesanan::saldoWipBatch()`, dua query tetap; sisanya masih terbuka.)* Dahulu `DataPesanan::berjalan()->get()->sum(saldoWip())` melakukan query per perintah kerja; `akumulasiSelisih()` satu query per faktur valas; `PiutangAgingService` memuat semua faktur non-draft lalu `whereIn`. `TanpaNPlusSatuTest` sudah menutup pola ini untuk halaman, bukan untuk jalur-jalur ini.
 - **ALG-016 (S11).** `postNpk` memuat `DataPesanan::find()` tanpa kunci; `selesaikan()` mengunci dan membekukan biaya per unit. NPK bersamaan dapat menambah biaya setelah pembekuan.
 
 ### Rendah

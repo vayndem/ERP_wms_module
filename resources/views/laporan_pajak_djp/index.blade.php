@@ -33,22 +33,22 @@
             </div>
         </form>
 
-        <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-            <div class="rounded-lg border border-base-300 bg-base-100 p-4">
-                <p class="text-xs uppercase text-base-content/60">Total DPP</p>
-                <p class="text-xl font-bold">Rp {{ number_format($total_dpp, 2, ',', '.') }}</p>
+        <div class="stats stats-vertical mb-4 w-full border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal">
+            <div class="stat">
+                <div class="stat-title">Total DPP</div>
+                <div class="stat-value text-xl">Rp {{ number_format($total_dpp, 2, ',', '.') }}</div>
             </div>
-            <div class="rounded-lg border border-base-300 bg-base-100 p-4">
-                <p class="text-xs uppercase text-base-content/60">PPN Keluaran</p>
-                <p class="text-xl font-bold">Rp {{ number_format($total_ppn, 2, ',', '.') }}</p>
+            <div class="stat">
+                <div class="stat-title">PPN Keluaran</div>
+                <div class="stat-value text-xl">Rp {{ number_format($total_ppn, 2, ',', '.') }}</div>
             </div>
-            <div class="rounded-lg border border-base-300 bg-base-100 p-4">
-                <p class="text-xs uppercase text-base-content/60">PPh Dipotong</p>
-                <p class="text-xl font-bold">Rp {{ number_format($total_pph, 2, ',', '.') }}</p>
+            <div class="stat">
+                <div class="stat-title">PPh Dipotong</div>
+                <div class="stat-value text-xl">Rp {{ number_format($total_pph, 2, ',', '.') }}</div>
             </div>
-            <div class="rounded-lg border {{ $faktur_belum_siap + $bupot_belum_siap > 0 ? 'border-error/40 bg-error/5' : 'border-base-300 bg-base-100' }} p-4">
-                <p class="text-xs uppercase text-base-content/60">Belum Siap Lapor</p>
-                <p class="text-xl font-bold">{{ $faktur_belum_siap + $bupot_belum_siap }} dokumen</p>
+            <div class="stat {{ $faktur_belum_siap + $bupot_belum_siap > 0 ? 'bg-error/5' : '' }}">
+                <div class="stat-title">Belum Siap Lapor</div>
+                <div class="stat-value text-xl {{ $faktur_belum_siap + $bupot_belum_siap > 0 ? 'text-error' : '' }}">{{ $faktur_belum_siap + $bupot_belum_siap }} dokumen</div>
             </div>
         </div>
 
@@ -128,7 +128,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 p-4">
                 <div>
                     <h4 class="font-semibold">Pemotongan PPh 23 dan PPh 4(2)</h4>
-                    <p class="text-xs text-base-content/60">Dari pembayaran POSTED menurut tanggal pembayaran, bukan dari tanggal faktur.</p>
+                    <p class="text-xs text-base-content/60">Dari pembayaran @include('bukti_potong._status-label', ['statusCode' => 'POSTED']) menurut tanggal pembayaran, bukan dari tanggal faktur.</p>
                 </div>
                 @can('viewAny', App\Models\BuktiPotong::class)
                     <a href="{{ route('bukti-potong.index', ['masa' => $masa]) }}" class="btn btn-outline btn-sm">Kelola Bukti Potong</a>
@@ -155,7 +155,7 @@
                                 <td class="text-end">Rp {{ number_format($baris['pph_dipotong'], 2, ',', '.') }}</td>
                                 <td>
                                     @if ($baris['siap_lapor'])
-                                        <span class="badge badge-success badge-sm">{{ $baris['status_bukti'] }}{{ $baris['nomor_bukti_djp'] ? ' ' . $baris['nomor_bukti_djp'] : '' }}</span>
+                                        <span class="badge badge-success badge-sm">@include('bukti_potong._status-label', ['statusCode' => $baris['status_bukti']]){{ $baris['nomor_bukti_djp'] ? ' ' . $baris['nomor_bukti_djp'] : '' }}</span>
                                     @else
                                         <span class="badge badge-warning badge-sm">{{ $baris['catatan'] }}</span>
                                     @endif

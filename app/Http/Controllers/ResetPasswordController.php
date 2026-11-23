@@ -6,6 +6,7 @@ use App\Http\Requests\Auth\SendResetLinkRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
@@ -39,6 +40,12 @@ class ResetPasswordController extends Controller
                     'password' => $password,
                     'remember_token' => Str::random(60),
                 ])->save();
+
+                $user->tokens()->delete();
+
+                if (config('session.driver') === 'database') {
+                    DB::table(config('session.table', 'sessions'))->where('user_id', $user->id)->delete();
+                }
 
                 event(new PasswordReset($user));
             }

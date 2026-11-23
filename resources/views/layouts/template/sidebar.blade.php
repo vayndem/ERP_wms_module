@@ -223,12 +223,15 @@
                         Auth::user()->can('viewKinerjaSales') ||
                         Auth::user()->can('viewProcurementAnalytics'))
                     <li
-                        class="{{ request()->routeIs('pelanggan.*') || request()->routeIs('pesanan-penjualan.*') || request()->routeIs('surat-jalan.*') || request()->routeIs('faktur-penjualan.*') || request()->routeIs('data-pesanan.*') || request()->routeIs('lacak-pembelian.*') || request()->routeIs('supplier-scorecard.*') ? 'active' : '' }}">
+                        class="{{ request()->routeIs('pelanggan.*', 'pesanan-penjualan.*', 'surat-jalan.*', 'faktur-penjualan.*', 'data-pesanan.*', 'bom.*', 'routing-produksi.*', 'varians-pemakaian.*', 'kinerja-sales.*', 'piutang-aging.*', 'lacak-pembelian.*', 'supplier-scorecard.*') ? 'active' : '' }}">
                         <a href="#penjualan" class="svg-icon"
-                            aria-expanded="{{ request()->routeIs('pelanggan.*') || request()->routeIs('pesanan-penjualan.*') || request()->routeIs('surat-jalan.*') || request()->routeIs('faktur-penjualan.*') || request()->routeIs('data-pesanan.*') || request()->routeIs('lacak-pembelian.*') || request()->routeIs('supplier-scorecard.*') ? 'true' : 'false' }}">
+                            aria-expanded="{{ request()->routeIs('pelanggan.*', 'pesanan-penjualan.*', 'surat-jalan.*', 'faktur-penjualan.*', 'data-pesanan.*', 'bom.*', 'routing-produksi.*', 'varians-pemakaian.*', 'kinerja-sales.*', 'piutang-aging.*', 'lacak-pembelian.*', 'supplier-scorecard.*') ? 'true' : 'false' }}">
                             <i class="fa-solid fa-cart-shopping"></i><span>Penjualan &amp; Produksi</span>
+                            <i class="fa-solid fa-chevron-right mm-arrow-right arrow-active"></i>
+                            <i class="fa-solid fa-chevron-down mm-arrow-right arrow-hover"></i>
                         </a>
-                        <ul class="sub-menu">
+                        <ul id="penjualan"
+                            class="submenu {{ request()->routeIs('pelanggan.*', 'pesanan-penjualan.*', 'surat-jalan.*', 'faktur-penjualan.*', 'data-pesanan.*', 'bom.*', 'routing-produksi.*', 'varians-pemakaian.*', 'kinerja-sales.*', 'piutang-aging.*', 'lacak-pembelian.*', 'supplier-scorecard.*') ? 'show' : '' }}">
                             @can('viewAny', App\Models\Pelanggan::class)
                                 <li class="{{ request()->routeIs('pelanggan.*') ? 'active' : '' }}">
                                     <a href="{{ route('pelanggan.index') }}" class="svg-icon">

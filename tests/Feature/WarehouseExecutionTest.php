@@ -129,6 +129,49 @@ class WarehouseExecutionTest extends TestCase
         );
     }
 
+    public function test_cycle_schedule_reports_days_since_the_last_posted_count_as_a_positive_number(): void
+    {
+        app(AbcAnalysisService::class)->hitung();
+
+        $baris = PengaturanBahanGudang::whereNotNull('kelas_abc')
+            ->where('aktif', true)
+            ->whereHas('gudang', fn ($q) => $q->where('aktif', true))
+            ->firstOrFail();
+
+        $opname = StockOpname::where('warehouse_id', $baris->gudang_id)
+            ->where('jenis', StockOpname::SIKLUS)
+            ->where('kelas_abc', $baris->kelas_abc)
+            ->where('status', StockOpname::POSTED);
+        $this->assertSame(0, $opname->count(), 'Tes ini mengandaikan belum ada cycle count terposting untuk kelas ini.');
+
+        $catat = fn (int $hari) => StockOpname::create([
+            'number' => 'OPS-UJI-' . $hari . random_int(1000, 9999),
+            'warehouse_id' => $baris->gudang_id,
+            'jenis' => StockOpname::SIKLUS,
+            'kelas_abc' => $baris->kelas_abc,
+            'cutoff_at' => now()->subDays($hari),
+            'status' => StockOpname::POSTED,
+            'created_by' => User::factory()->create(['type' => User::ROLE_WAREHOUSE])->id,
+            'posted_at' => now()->subDays($hari),
+        ]);
+        $papan = fn () => app(CycleCountService::class)->papanJadwal([(int) $baris->gudang_id])
+            ->firstWhere('gudang_id', (int) $baris->gudang_id)['kelas'][$baris->kelas_abc];
+        $abc = fn () => app(AbcAnalysisService::class)->jatuhTempoSiklus((int) $baris->gudang_id)[$baris->kelas_abc];
+
+        $catat(10);
+        $this->assertSame(10, $papan()['hari_sejak']);
+        $this->assertSame(10, $abc()['hari_sejak']);
+        $this->assertFalse($papan()['jatuh_tempo']);
+        $this->assertFalse($abc()['jatuh_tempo']);
+
+        StockOpname::where('warehouse_id', $baris->gudang_id)->where('number', 'like', 'OPS-UJI-10%')->delete();
+        $catat(400);
+        $this->assertSame(400, $papan()['hari_sejak']);
+        $this->assertSame(400, $abc()['hari_sejak']);
+        $this->assertTrue($papan()['jatuh_tempo']);
+        $this->assertTrue($abc()['jatuh_tempo']);
+    }
+
     public function test_cycle_count_refuses_an_unknown_class(): void
     {
         $this->expectException(RuntimeException::class);

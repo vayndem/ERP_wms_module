@@ -254,4 +254,20 @@ class FakturPajakMetadataTest extends TestCase
 
         $this->assertNotNull($faktur->pembeli_nama);
     }
+
+    public function test_the_metadata_migration_can_run_again_without_clobbering_snapshots_and_turns_empty_nsfp_into_null(): void
+    {
+        $terbit = FakturPenjualan::where('status', '!=', FakturPenjualan::DRAFT)->whereNotNull('pembeli_nama')->orderBy('id')->firstOrFail();
+        $kosong = FakturPenjualan::where('status', FakturPenjualan::DRAFT)->orderBy('id')->first()
+            ?? FakturPenjualan::where('id', '!=', $terbit->id)->orderBy('id')->firstOrFail();
+
+        $terbit->forceFill(['pembeli_nama' => 'SNAPSHOT TERBIT LAMA'])->save();
+        $kosong->forceFill(['no_faktur_pajak' => ''])->save();
+
+        $migrasi = require base_path('database/migrations/2026_11_20_000103_add_metadata_pajak_to_faktur.php');
+        $migrasi->up();
+
+        $this->assertSame('SNAPSHOT TERBIT LAMA', $terbit->fresh()->pembeli_nama);
+        $this->assertNull($kosong->fresh()->no_faktur_pajak);
+    }
 }

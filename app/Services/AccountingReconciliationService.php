@@ -122,10 +122,7 @@ class AccountingReconciliationService
 
         $transitDiharapkan = round($transitLayer + $transitSelisih, 2);
 
-        $wipPerintah = round(
-            DataPesanan::berjalan()->get()->sum(fn (DataPesanan $pesanan) => $pesanan->saldoWip()),
-            2
-        );
+        $wipPerintah = DataPesanan::saldoWipBatch(DataPesanan::berjalan()->get());
 
         return collect([
             [

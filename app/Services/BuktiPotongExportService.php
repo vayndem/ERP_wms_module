@@ -21,9 +21,9 @@ class BuktiPotongExportService
         private KepatuhanPajakService $kepatuhan,
     ) {}
 
-    public function penghalang(string $masa): Collection
+    public function penghalang(string $masa, ?array $hasilPeriksa = null): Collection
     {
-        $temuan = $this->kepatuhan->periksa($masa)['temuan'];
+        $temuan = ($hasilPeriksa ?? $this->kepatuhan->periksa($masa))['temuan'];
 
         return $temuan->filter(fn (array $baris) => in_array($baris['kategori'], KepatuhanPajakService::PENGHALANG_EKSPOR_BUPOT, true))->values();
     }

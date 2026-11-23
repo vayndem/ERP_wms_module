@@ -9,14 +9,17 @@
 @endphp
 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
     @forelse ($tasks as $task)
-        <a href="{{ $task['url'] }}" class="card border border-base-300 bg-base-100 p-4 shadow-sm transition hover:border-primary hover:shadow-md">
-            <div class="flex items-center justify-between">
-                <span class="flex h-10 w-10 items-center justify-center rounded-full {{ $toneClasses[$task['tone'] ?? 'neutral'] }}">
-                    <i class="fa-solid {{ $task['icon'] ?? 'fa-list-check' }}"></i>
-                </span>
-                <span class="text-2xl font-bold">{{ $task['count'] }}</span>
+        <a href="{{ $task['url'] }}" class="stats border border-base-300 bg-base-100 shadow-sm transition hover:border-primary hover:shadow-md motion-reduce:transition-none">
+            <div class="stat p-4">
+                <div class="stat-figure">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-full {{ $toneClasses[$task['tone'] ?? 'neutral'] }}">
+                        <i class="fa-solid {{ $task['icon'] ?? 'fa-list-check' }}"></i>
+                    </span>
+                </div>
+                <div class="stat-title whitespace-normal">{{ $task['label'] }}</div>
+                <div class="stat-value text-2xl">{{ $task['count'] }}</div>
+                <div class="stat-desc">Buka daftar terkait</div>
             </div>
-            <p class="mt-2 text-sm font-semibold text-base-content/70">{{ $task['label'] }}</p>
         </a>
     @empty
         <div class="col-span-full py-4 text-center text-base-content/50">Tidak ada tugas untuk ditampilkan.</div>

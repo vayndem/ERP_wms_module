@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\BuktiPotongService;
 use App\Services\DocumentNumberService;
 use App\Services\WmsAccountingService;
+use App\Support\IdentitasPajak;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -32,22 +33,34 @@ class BuktiPotongDemoSeeder extends Seeder
             return;
         }
 
+        $pemasok = Supplier::orderBy('id')->get()
+            ->filter(fn (Supplier $supplier) => IdentitasPajak::npwpValid((string) $supplier->npwp) && IdentitasPajak::nitkuValid((string) $supplier->nitku))
+            ->values();
+
+        if ($pemasok->isEmpty()) {
+            $this->command?->warn('Skenario bukti potong dilewati: tidak ada supplier dengan NPWP dan NITKU valid.');
+
+            return;
+        }
+
+        $pilih = fn (int $urutan) => $pemasok[$urutan % $pemasok->count()];
+
         $bulanLalu = today()->subMonthNoOverflow()->startOfMonth()->addDays(14);
         $hariIni = today();
 
-        $this->skenario('PPh 23 satu faktur dua pembayaran di dua masa', function () use ($purchasing, $finance, $bulanLalu, $hariIni) {
-            $faktur = $this->fakturJasa($purchasing, 1, 'PPH23', '24-104-29', 2, 10000000, $bulanLalu->copy()->subDays(3), 'Jasa perawatan mesin jahit berkala');
+        $this->skenario('PPh 23 satu faktur dua pembayaran di dua masa', function () use ($purchasing, $finance, $bulanLalu, $hariIni, $pilih) {
+            $faktur = $this->fakturJasa($purchasing, $pilih(0), 'PPH23', '24-104-29', 2, 10000000, $bulanLalu->copy()->subDays(3), 'Jasa perawatan mesin jahit berkala');
             $this->bayar($finance, $faktur, $bulanLalu, 4900000, 100000);
             $this->bayar($finance, $faktur, $hariIni, 4900000, 100000);
         });
 
-        $this->skenario('PPh 4(2) sewa gudang', function () use ($purchasing, $finance, $hariIni) {
-            $faktur = $this->fakturJasa($purchasing, 2, 'PPH4A2', '28-403-02', 10, 5000000, $hariIni->copy()->subDays(2), 'Sewa ruang gudang tambahan');
+        $this->skenario('PPh 4(2) sewa gudang', function () use ($purchasing, $finance, $hariIni, $pilih) {
+            $faktur = $this->fakturJasa($purchasing, $pilih(1), 'PPH4A2', '28-403-02', 10, 5000000, $hariIni->copy()->subDays(2), 'Sewa ruang gudang tambahan');
             $this->bayar($finance, $faktur, $hariIni, 4500000, 500000);
         });
 
-        $this->skenario('Pembayaran ber-PPh yang kemudian VOID', function () use ($purchasing, $finance, $hariIni, $bulanLalu) {
-            $faktur = $this->fakturJasa($purchasing, 3, 'PPH23', '24-104-29', 2, 2000000, $hariIni->copy()->subDays(1), 'Jasa servis AC kantor');
+        $this->skenario('Pembayaran ber-PPh yang kemudian VOID', function () use ($purchasing, $finance, $hariIni, $bulanLalu, $pilih) {
+            $faktur = $this->fakturJasa($purchasing, $pilih(2), 'PPH23', '24-104-29', 2, 2000000, $hariIni->copy()->subDays(1), 'Jasa servis AC kantor');
             $pembayaran = $this->bayar($finance, $faktur, $hariIni, 1960000, 40000);
 
             $service = app(BuktiPotongService::class);
@@ -85,12 +98,11 @@ class BuktiPotongDemoSeeder extends Seeder
         }
     }
 
-    private function fakturJasa(User $pembuat, int $supplierId, string $jenis, string $kode, float $tarif, float $dasar, Carbon $tanggal, string $uraian): FakturPembelian
+    private function fakturJasa(User $pembuat, Supplier $supplier, string $jenis, string $kode, float $tarif, float $dasar, Carbon $tanggal, string $uraian): FakturPembelian
     {
         Auth::setUser($pembuat);
 
         $numbers = app(DocumentNumberService::class);
-        $supplier = Supplier::findOrFail($supplierId);
         $kategori = KategoriJasa::where('code', KategoriJasa::OPERATIONAL)->firstOrFail();
 
         $po = PesananJasa::create([

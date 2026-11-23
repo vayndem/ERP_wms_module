@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BaganAkun;
 use App\Models\BuktiPotong;
 use App\Models\FakturPembelian;
+use App\Models\KodeObjekPajak;
 use App\Models\LampiranDokumen;
 use App\Models\PembayaranFaktur;
 use App\Models\Supplier;
@@ -604,5 +605,131 @@ class BuktiPotongTest extends TestCase
             ->groupBy('invoice_lpb_id')
             ->filter(fn ($grup) => $grup->map(fn ($p) => $p->tanggal_pembayaran->format('Y-m'))->unique()->count() > 1);
         $this->assertGreaterThan(0, $duaMasa->count(), 'Harus ada faktur yang dipotong di dua masa berbeda.');
+    }
+
+    private function hitungQueryPembayaran(callable $aksi): int
+    {
+        $jumlah = 0;
+
+        DB::listen(function ($query) use (&$jumlah) {
+            if (preg_match('/^select \* from `wms_pembayaran_faktur` where `status` = \? and `potongan_pph` > \?/i', $query->sql)) {
+                $jumlah++;
+            }
+        });
+
+        $aksi();
+
+        return $jumlah;
+    }
+
+    public function test_the_withholding_page_and_the_tax_report_read_the_withholding_payments_once(): void
+    {
+        $this->duaPembayaranDiDuaMasa();
+        $this->service()->sinkron(self::MASA_1, $this->finance());
+        $akuntan = User::where('type', User::ROLE_ACCOUNTING)->firstOrFail();
+
+        $halamanBukti = $this->hitungQueryPembayaran(
+            fn () => $this->actingAs($akuntan)->get(route('bukti-potong.index', ['masa' => self::MASA_1]))->assertOk()
+        );
+        $this->assertSame(1, $halamanBukti);
+
+        $laporan = $this->hitungQueryPembayaran(
+            fn () => $this->actingAs($akuntan)->get(route('laporan-pajak-djp.index', ['masa' => self::MASA_1]))->assertOk()
+        );
+        $this->assertSame(1, $laporan);
+    }
+
+    public function test_sharing_the_payments_does_not_change_the_preflight_result(): void
+    {
+        $this->duaPembayaranDiDuaMasa();
+        $this->service()->sinkron(self::MASA_1, $this->finance());
+        $tanpaKode = $this->faktur($this->supplier(), ['kode_objek_pajak' => null]);
+        $this->bayar($tanpaKode, self::MASA_1 . '-16', 100000);
+        $kepatuhan = app(KepatuhanPajakService::class);
+
+        $mandiri = $kepatuhan->periksa(self::MASA_1);
+        $berbagi = $kepatuhan->periksa(self::MASA_1, $this->service()->pembayaranBerpph(self::MASA_1));
+
+        $this->assertSame($mandiri['temuan']->all(), $berbagi['temuan']->all());
+        $this->assertSame($mandiri['ringkasan'], $berbagi['ringkasan']);
+        $this->assertSame(
+            $kepatuhan->temuanBuktiPotong(self::MASA_1)->all(),
+            $kepatuhan->temuanBuktiPotongDari($mandiri)->all()
+        );
+        $this->assertGreaterThan(0, $kepatuhan->temuanBuktiPotongDari($mandiri)->count());
+    }
+
+    public function test_a_nik_only_recipient_without_a_nitku_blocks_the_xml_export_in_the_preflight(): void
+    {
+        $supplier = $this->supplier(['npwp' => null, 'nik' => '3201234567890001', 'tipe_identitas' => 'NIK', 'nitku' => null]);
+        $this->bayar($this->faktur($supplier), self::MASA_1 . '-15', 100000);
+        $this->service()->sinkron(self::MASA_1, $this->finance());
+
+        $ringkasan = app(KepatuhanPajakService::class)->periksa(self::MASA_1)['ringkasan'];
+        $this->assertSame(1, $ringkasan[KepatuhanPajakService::BUKTI_POTONG_TANPA_NITKU]);
+        $this->assertSame(0, $ringkasan[KepatuhanPajakService::BUKTI_POTONG_IDENTITAS_TIDAK_LENGKAP]);
+
+        $kategori = app(BuktiPotongExportService::class)->penghalang(self::MASA_1)->pluck('kategori');
+        $this->assertTrue($kategori->contains(KepatuhanPajakService::BUKTI_POTONG_TANPA_NITKU));
+
+        $this->actingAs($this->finance())
+            ->get(route('bukti-potong.index', ['masa' => self::MASA_1]))
+            ->assertOk()
+            ->assertSee('Ekspor XML diblokir')
+            ->assertSee(KepatuhanPajakService::BUKTI_POTONG_TANPA_NITKU);
+    }
+
+    public function test_an_inactive_or_mismatched_object_code_blocks_the_xml_export_in_the_preflight(): void
+    {
+        $tidakCocok = $this->faktur($this->supplier(), ['kode_objek_pajak' => '28-403-02']);
+        $this->bayar($tidakCocok, self::MASA_1 . '-12', 100000);
+        $this->service()->sinkron(self::MASA_1, $this->finance());
+
+        $ringkasan = app(KepatuhanPajakService::class)->periksa(self::MASA_1)['ringkasan'];
+        $this->assertSame(1, $ringkasan[KepatuhanPajakService::BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID]);
+        $this->assertSame(0, $ringkasan[KepatuhanPajakService::BUKTI_POTONG_TANPA_KODE_OBJEK]);
+
+        $nonaktif = $this->faktur($this->supplier(), ['kode_objek_pajak' => '24-104-29']);
+        $this->bayar($nonaktif, self::MASA_1 . '-13', 100000);
+        $this->service()->sinkron(self::MASA_1, $this->finance());
+        KodeObjekPajak::where('kode', '24-104-29')->update(['is_active' => false]);
+
+        $hasil = app(KepatuhanPajakService::class)->periksa(self::MASA_1);
+        $this->assertSame(2, $hasil['ringkasan'][KepatuhanPajakService::BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID]);
+
+        $kategori = app(BuktiPotongExportService::class)->penghalang(self::MASA_1)->pluck('kategori');
+        $this->assertTrue($kategori->contains(KepatuhanPajakService::BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID));
+    }
+
+    public function test_a_duplicate_withholding_number_raced_past_the_check_becomes_a_validation_error_not_a_500(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $finance = $this->finance();
+
+        foreach ([self::MASA_1 . '-10', self::MASA_1 . '-11'] as $tanggal) {
+            $this->bayar($this->faktur($this->supplier()), $tanggal, 100000);
+        }
+
+        $this->service()->sinkron(self::MASA_1, $finance);
+        $bukti = BuktiPotong::where('status', BuktiPotong::DRAFT)->orderByDesc('id')->take(2)->get();
+        $this->assertCount(2, $bukti);
+        [$pertama, $kedua] = [$bukti[0], $bukti[1]];
+
+        $this->actingAs($finance)->post(route('bukti-potong.terbitkan', $pertama), ['nomor_bukti_djp' => 'NOMOR-BALAP'])
+            ->assertRedirect(route('bukti-potong.show', $pertama));
+
+        $aktif = true;
+        BuktiPotong::updating(function (BuktiPotong $model) use (&$aktif, $pertama) {
+            if ($aktif && $model->nomor_bukti_djp === 'NOMOR-BALAP-2') {
+                DB::table('wms_bukti_potong')->where('id', $pertama->id)->update(['nomor_bukti_djp' => 'NOMOR-BALAP-2']);
+            }
+        });
+
+        $this->actingAs($finance)->post(route('bukti-potong.terbitkan', $kedua), ['nomor_bukti_djp' => 'NOMOR-BALAP-2'])
+            ->assertSessionHasErrors('bukti_potong');
+        $aktif = false;
+
+        $this->assertStringContainsString('sudah dipakai', session('errors')->first('bukti_potong'));
+        $this->assertSame(BuktiPotong::DRAFT, $kedua->fresh()->status);
     }
 }

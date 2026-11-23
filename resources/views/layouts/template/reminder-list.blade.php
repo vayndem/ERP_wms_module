@@ -9,7 +9,8 @@
             <span class="badge badge-warning">{{ $reminders->count() }}</span>
         @endif
     </div>
-    <div class="divide-y divide-base-300">
+    <div class="p-4">
+        <ul class="timeline timeline-vertical timeline-compact">
         @forelse ($reminders as $item)
             @php
                 $hari = (int) $item['hari'];
@@ -20,23 +21,32 @@
                     default => ['info', $hari . ' hari lagi'],
                 };
             @endphp
-            <a href="{{ $item['url'] }}" class="flex items-start justify-between gap-3 p-3 transition hover:bg-base-200">
-                <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold">{{ $item['label'] }}</p>
-                    <p class="text-xs text-base-content/60">
-                        {{ $item['konteks'] }} &middot; {{ $item['tanggal']->format('d-m-Y') }}
+            <li>
+                @if (!$loop->first)<hr class="bg-base-300">@endif
+                <div class="timeline-start pr-2 text-end">
+                    <span class="badge badge-{{ $tone }} badge-sm whitespace-nowrap">{{ $teks }}</span>
+                    <span class="mt-1 block text-xs text-base-content/50">{{ $item['tanggal']->format('d-m-Y') }}</span>
+                </div>
+                <div class="timeline-middle text-base-content/40">
+                    <i class="fa-solid fa-circle text-xs"></i>
+                </div>
+                <a href="{{ $item['url'] }}" class="timeline-end timeline-box mb-3 block w-full border-base-300 bg-base-100 transition hover:border-primary hover:bg-base-200/50 motion-reduce:transition-none">
+                    <p class="text-sm font-semibold leading-snug">{{ $item['label'] }}</p>
+                    <p class="mt-1 text-xs text-base-content/60">
+                        {{ $item['konteks'] }}
                         @if (!is_null($item['nilai']))
                             &middot; {{ rtrim(rtrim(number_format((float) $item['nilai'], 2, ',', '.'), '0'), ',') }}
                         @endif
                     </p>
-                </div>
-                <span class="badge badge-{{ $tone }} shrink-0 whitespace-nowrap">{{ $teks }}</span>
-            </a>
+                </a>
+                @if (!$loop->last)<hr class="bg-base-300">@endif
+            </li>
         @empty
-            <div class="p-6 text-center text-base-content/50">
+            <li class="block p-6 text-center text-base-content/50">
                 <i class="fa-solid fa-circle-check text-2xl text-success"></i>
                 <p class="mt-2 text-sm">Tidak ada yang mendesak. Semua aman.</p>
-            </div>
+            </li>
         @endforelse
+        </ul>
     </div>
 </div>

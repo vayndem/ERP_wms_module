@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\PengaturanBahanGudang;
 use App\Models\StockOpname;
 use App\Models\StokGudang;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -114,6 +115,7 @@ class CycleCountService
                 }
 
                 $tanggalTerakhir = $terakhir->get($kunci)?->terakhir;
+                $tanggalTerakhir = $tanggalTerakhir ? Carbon::parse($tanggalTerakhir) : null;
 
                 return [$namaKelas => [
                     'kelas' => $namaKelas,
@@ -121,7 +123,7 @@ class CycleCountService
                     'siklus_bulan' => $bulan,
                     'terakhir' => $tanggalTerakhir,
                     'jatuh_tempo' => $tanggalTerakhir === null || $tanggalTerakhir < now()->subMonths($bulan),
-                    'hari_sejak' => $tanggalTerakhir ? (int) now()->diffInDays($tanggalTerakhir) : null,
+                    'hari_sejak' => $tanggalTerakhir ? (int) $tanggalTerakhir->diffInDays(now()) : null,
                 ]];
             })->all();
 

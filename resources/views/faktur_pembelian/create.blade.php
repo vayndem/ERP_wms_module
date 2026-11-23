@@ -1,5 +1,5 @@
 <dialog id="createInvoiceModal" class="modal">
-    <div class="modal-box max-w-6xl p-0 overflow-hidden" x-data="invoiceCreateForm({
+    <div class="modal-box max-w-6xl p-0" x-data="invoiceCreateForm({
         suppliers: {{ Js::from($suppliers->map(fn($s) => ['id' => $s->id, 'nama' => $s->nama, 'telp' => $s->telp, 'alamat' => $s->alamat])) }},
         lpbs: {{ Js::from($lpbs->map(fn($l) => [
                 'id' => $l->id,
@@ -14,7 +14,7 @@
             <h3 class="text-lg font-bold"><i class="fa-solid fa-file-invoice-dollar"></i> Buat Invoice Supplier Baru</h3>
         </div>
         <form @submit.prevent="submit()" data-autosave data-autosave-key="invoice-lpb-create" class="flex flex-col">
-            <div class="max-h-[75vh] overflow-y-auto p-6">
+            <div class="p-6">
                 <div class="card border border-base-300 bg-base-100 p-4 shadow-sm">
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div class="form-control relative">
@@ -143,10 +143,10 @@
                         </div>
                         <div x-show="form.is_ppn" x-cloak class="mb-2">
                             <label class="label"><span class="label-text font-semibold">No. Faktur Pajak (NSFP) <span class="text-error">*</span></span></label>
-                            <input type="text" x-model="form.no_faktur_pajak" class="input input-bordered input-sm w-full" placeholder="17 digit angka" pattern="(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})">
+                            <input type="text" x-model="form.no_faktur_pajak" :disabled="!form.is_ppn" :required="form.is_ppn" class="input input-bordered input-sm w-full" placeholder="17 digit angka" pattern="(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})">
                             <span class="label-text-alt mt-1 text-base-content/50">Format: 17 digit angka (atau format lama 010.001-23.12345678) — wajib diisi bila PPN dipakai, syarat kredit PPN Masukan.</span>
                             <label class="label"><span class="label-text font-semibold">Tanggal Faktur Pajak</span></label>
-                            <input type="date" x-model="form.tanggal_faktur_pajak" class="input input-bordered input-sm w-full">
+                            <input type="date" x-model="form.tanggal_faktur_pajak" :disabled="!form.is_ppn" class="input input-bordered input-sm w-full">
                         </div>
                         <div class="mb-2 flex items-center gap-3">
                             <label class="w-24 font-semibold">Diskon:</label>
@@ -238,6 +238,15 @@
                 mata_uang_asing: '', kurs: '', nilai_asing: '',
             },
 
+            init() {
+                this.$watch('form.is_ppn', (enabled) => {
+                    if (!enabled) {
+                        this.form.no_faktur_pajak = '';
+                        this.form.tanggal_faktur_pajak = '';
+                    }
+                });
+            },
+
             kodeObjek: @js($kodeObjek),
             get kodeObjekTersaring() {
                 return this.kodeObjek.filter((item) => item.jenis_pph === this.form.jenis_pph);
@@ -300,8 +309,12 @@
                 try {
                     const codes = this.lpbs.filter((item) => this.selectedLpbIds.includes(item.id)).map((item) => item.code);
                     const results = await Promise.all(codes.map((code) =>
-                        fetch(`{{ url('faktur-pembelian/lpb-detail') }}/${code}`, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } }).then((r) => r.json())
+                        fetch(`{{ url('faktur-pembelian/lpb-detail') }}/${code}`, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } }).then((response) => {
+                            if (window.handleSessionExpired(response)) return null;
+                            return response.json();
+                        })
                     ));
+                    if (results.some((result) => result === null)) return;
                     let subTotal = 0;
                     const items = [];
                     results.forEach((res) => {
@@ -333,6 +346,7 @@
                         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload),
                     });
+                    if (window.handleSessionExpired(response)) return;
                     const data = await response.json().catch(() => ({}));
                     if (!response.ok) { window.AppAlert.ajaxError(data); return; }
                     window.AppAlert.auto(data);

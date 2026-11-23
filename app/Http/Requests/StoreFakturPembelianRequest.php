@@ -26,6 +26,13 @@ class StoreFakturPembelianRequest extends FormRequest
             'pph'           => $this->pph ?? 0,
             'is_ppn'        => $this->boolean('is_ppn'),
         ]);
+
+        if (!$this->boolean('is_ppn')) {
+            $this->merge([
+                'no_faktur_pajak'      => null,
+                'tanggal_faktur_pajak' => null,
+            ]);
+        }
     }
 
     public function rules(): array

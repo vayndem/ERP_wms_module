@@ -28,12 +28,27 @@ class KepatuhanPajakService
     public const PENERIMA_TANPA_NPWP_VALID = 'PENERIMA_TANPA_NPWP_VALID';
     public const BUKTI_POTONG_PEMBAYARAN_VOID = 'BUKTI_POTONG_PEMBAYARAN_VOID';
 
+    public const BUKTI_POTONG_TANPA_NITKU = 'BUKTI_POTONG_TANPA_NITKU';
+    public const BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID = 'BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID';
+
     public const PENGHALANG_EKSPOR_BUPOT = [
         self::NPWP_PERUSAHAAN_TIDAK_VALID,
         self::PEMBAYARAN_PPH_TANPA_BUKTI_POTONG,
         self::BUKTI_POTONG_IDENTITAS_TIDAK_LENGKAP,
         self::BUKTI_POTONG_TANPA_KODE_OBJEK,
         self::BUKTI_POTONG_PEMBAYARAN_VOID,
+        self::BUKTI_POTONG_TANPA_NITKU,
+        self::BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID,
+    ];
+
+    public const KATEGORI_BUKTI_POTONG = [
+        self::PEMBAYARAN_PPH_TANPA_BUKTI_POTONG,
+        self::BUKTI_POTONG_IDENTITAS_TIDAK_LENGKAP,
+        self::BUKTI_POTONG_TANPA_KODE_OBJEK,
+        self::PENERIMA_TANPA_NPWP_VALID,
+        self::BUKTI_POTONG_PEMBAYARAN_VOID,
+        self::BUKTI_POTONG_TANPA_NITKU,
+        self::BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID,
     ];
 
     public const KATEGORI = [
@@ -49,11 +64,13 @@ class KepatuhanPajakService
         self::BUKTI_POTONG_TANPA_KODE_OBJEK,
         self::PENERIMA_TANPA_NPWP_VALID,
         self::BUKTI_POTONG_PEMBAYARAN_VOID,
+        self::BUKTI_POTONG_TANPA_NITKU,
+        self::BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID,
     ];
 
     private array $jenisBerkode = [];
 
-    public function periksa(string $masa): array
+    public function periksa(string $masa, ?Collection $pembayaranBerpph = null): array
     {
         [$awal, $akhir] = $this->rentang($masa);
 
@@ -78,7 +95,7 @@ class KepatuhanPajakService
             ->merge($this->temuanNsfpGanda($penjualan, $pembelian))
             ->merge($this->temuanTanggalFakturPajak($penjualan, $pembelian))
             ->merge($this->temuanKodeObjek($pembelian))
-            ->merge($this->temuanBuktiPotong($masa))
+            ->merge($this->temuanBuktiPotong($masa, $pembayaranBerpph))
             ->values();
 
         $ringkasan = [];
@@ -234,7 +251,7 @@ class KepatuhanPajakService
 
         $gandaJual = FakturPenjualan::query()
             ->where('status', '!=', FakturPenjualan::VOID)
-            ->whereNotNull('no_faktur_pajak')
+            ->whereIn('no_faktur_pajak', $penjualan->pluck('no_faktur_pajak')->reject(fn ($nsfp) => $nsfp === null)->unique()->values())
             ->groupBy('no_faktur_pajak')
             ->havingRaw('COUNT(*) > 1')
             ->pluck('no_faktur_pajak');
@@ -251,7 +268,7 @@ class KepatuhanPajakService
 
         $gandaBeli = FakturPembelian::query()
             ->where('status', '!=', FakturPembelian::VOID)
-            ->whereNotNull('no_faktur_pajak')
+            ->whereIn('no_faktur_pajak', $pembelian->pluck('no_faktur_pajak')->reject(fn ($nsfp) => $nsfp === null)->unique()->values())
             ->groupBy('kode_supplier', 'no_faktur_pajak')
             ->havingRaw('COUNT(*) > 1')
             ->get(['kode_supplier', 'no_faktur_pajak'])
@@ -319,18 +336,13 @@ class KepatuhanPajakService
         return $temuan;
     }
 
-    public function temuanBuktiPotong(string $masa): Collection
+    public function temuanBuktiPotong(string $masa, ?Collection $pembayaranBerpph = null): Collection
     {
         [$awal, $akhir] = $this->rentang($masa);
         $service = app(BuktiPotongService::class);
         $temuan = collect();
 
-        $pembayaran = PembayaranFaktur::with(['invoice.supplier' => fn ($query) => $query->withTrashed()])
-            ->where('status', PembayaranFaktur::POSTED)
-            ->where('potongan_pph', '>', 0)
-            ->whereBetween('tanggal_pembayaran', [$awal, $akhir])
-            ->whereHas('invoice', fn ($query) => $query->whereIn('jenis_pph', BuktiPotong::JENIS_DIDUKUNG))
-            ->get();
+        $pembayaran = ($pembayaranBerpph ?? $service->pembayaranBerpph($masa))->sortBy('id')->values();
 
         $adaBukti = BuktiPotong::whereIn('pembayaran_id', $pembayaran->pluck('id'))
             ->whereIn('status', [BuktiPotong::DRAFT, BuktiPotong::DITERBITKAN])
@@ -380,6 +392,28 @@ class KepatuhanPajakService
                 ));
             }
 
+            $masalahKode = $service->masalahKodeObjek($baris);
+
+            if ($masalahKode !== null) {
+                $temuan->push($this->baris(
+                    self::BUKTI_POTONG_KODE_OBJEK_TIDAK_VALID,
+                    'Bukti potong',
+                    $rujukan,
+                    $baris->penerima_nama,
+                    $masalahKode
+                ));
+            }
+
+            if (blank($baris->penerima_npwp) && !IdentitasPajak::nitkuValid((string) $baris->penerima_nitku)) {
+                $temuan->push($this->baris(
+                    self::BUKTI_POTONG_TANPA_NITKU,
+                    'Bukti potong',
+                    $rujukan,
+                    $baris->penerima_nama,
+                    'NITKU penerima wajib 22 digit untuk ekspor XML BPPU, tetapi kosong atau tidak valid.'
+                ));
+            }
+
             if ($baris->jenis_pph === 'PPH23' && !IdentitasPajak::npwpValid($baris->penerima_npwp)) {
                 $temuan->push($this->baris(
                     self::PENERIMA_TANPA_NPWP_VALID,
@@ -402,6 +436,13 @@ class KepatuhanPajakService
         }
 
         return $temuan;
+    }
+
+    public function temuanBuktiPotongDari(array $hasil): Collection
+    {
+        return $hasil['temuan']
+            ->filter(fn (array $baris) => in_array($baris['kategori'], self::KATEGORI_BUKTI_POTONG, true))
+            ->values();
     }
 
     private function kenaPph(FakturPembelian $faktur): bool

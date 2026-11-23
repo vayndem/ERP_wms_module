@@ -9,6 +9,15 @@ use Tests\TestCase;
 
 class KualitasTampilanTest extends TestCase
 {
+    public function test_sidebar_submenus_use_the_shared_styled_component(): void
+    {
+        $sidebar = file_get_contents(resource_path('views/layouts/template/sidebar.blade.php'));
+
+        $this->assertStringNotContainsString('class="sub-menu"', $sidebar);
+        $this->assertStringContainsString('id="penjualan"', $sidebar);
+        $this->assertStringContainsString('class="submenu', $sidebar);
+    }
+
     use DatabaseTransactions;
 
     private const LEWATI = [

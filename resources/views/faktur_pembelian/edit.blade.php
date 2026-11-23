@@ -1,6 +1,8 @@
 <dialog id="editInvoiceModal" class="modal">
-    <div class="modal-box max-w-5xl p-0 overflow-hidden" x-data="{
+    <div class="modal-box max-w-5xl p-0" x-data="{
         isPpn: {{ $invoice->ppn > 0 ? 'true' : 'false' }},
+        noFakturPajak: @js($invoice->no_faktur_pajak ?? ''),
+        tanggalFakturPajak: @js($invoice->tanggal_faktur_pajak?->format('Y-m-d') ?? ''),
         diskon: {{ $invoice->diskon }},
         ongkir: {{ $invoice->ongkir }},
         ppnImpor: {{ $invoice->ppn_impor }},
@@ -12,6 +14,18 @@
         get kodeObjekTersaring() { return this.kodeObjek.filter((item) => item.jenis_pph === this.jenisPph); },
         get ppnNominal() { return this.isPpn ? Math.round((this.subTotal * 11) / 100) : 0; },
         get grandTotal() { return (this.subTotal + this.ppnNominal + (Number(this.ongkir) || 0) + (Number(this.ppnImpor) || 0)) - (Number(this.diskon) || 0); },
+        init() {
+            if (!this.isPpn) {
+                this.noFakturPajak = '';
+                this.tanggalFakturPajak = '';
+            }
+            this.$watch('isPpn', (enabled) => {
+                if (!enabled) {
+                    this.noFakturPajak = '';
+                    this.tanggalFakturPajak = '';
+                }
+            });
+        },
         async submit(event) {
             const form = event.target;
             if (this.isPpn && !/^(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})$/.test((form.no_faktur_pajak.value || '').trim())) {
@@ -26,6 +40,7 @@
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                     body: new URLSearchParams(new FormData(form)),
                 });
+                if (window.handleSessionExpired(response)) return;
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) { window.AppAlert.ajaxError(data); return; }
                 window.AppAlert.auto(data);
@@ -47,7 +62,7 @@
             @method('PUT')
             <input type="hidden" name="kode_supplier" value="{{ $invoice->kode_supplier }}">
 
-            <div class="max-h-[70vh] overflow-y-auto p-6">
+            <div class="p-6">
                 <div class="card border border-base-300 bg-base-100 p-4 shadow-sm">
                     <div class="grid grid-cols-1 gap-4">
                         <div class="form-control">
@@ -99,11 +114,11 @@
                         </div>
                         <div x-show="isPpn" x-cloak class="mb-2">
                             <label class="label"><span class="label-text font-semibold">No. Faktur Pajak (NSFP) <span class="text-error">*</span></span></label>
-                            <input type="text" class="input input-bordered input-sm w-full" name="no_faktur_pajak" value="{{ $invoice->no_faktur_pajak }}"
+                            <input type="text" class="input input-bordered input-sm w-full" name="no_faktur_pajak" x-model="noFakturPajak" :disabled="!isPpn" :required="isPpn"
                                 placeholder="17 digit angka" pattern="(\d{17}|\d{3}\.\d{3}-\d{2}\.\d{8})">
                             <span class="label-text-alt mt-1 text-base-content/50">Format: 17 digit angka (atau format lama 010.001-23.12345678) — wajib diisi bila PPN dipakai, syarat kredit PPN Masukan.</span>
                             <label class="label"><span class="label-text font-semibold">Tanggal Faktur Pajak</span></label>
-                            <input type="date" class="input input-bordered input-sm w-full" name="tanggal_faktur_pajak" value="{{ $invoice->tanggal_faktur_pajak?->format('Y-m-d') }}">
+                            <input type="date" class="input input-bordered input-sm w-full" name="tanggal_faktur_pajak" x-model="tanggalFakturPajak" :disabled="!isPpn">
                         </div>
                         <div class="mb-2 flex items-center gap-3">
                             <label class="w-24 font-semibold">Diskon:</label>
