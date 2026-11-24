@@ -27,6 +27,7 @@ Warehouse • Procurement • Sales • Production • Finance • Accounting �
 | [📦 Gambaran Umum](#-gambaran-umum) | [🏗️ Standar Arsitektur](#️-standar-arsitektur) | [🔀 Alur Bisnis](#-alur-bisnis) | [🔄 Lifecycle Dokumen](#-lifecycle-dokumen) |
 | [🧩 Modul Aktif](#-modul-aktif) | [🏬 Multi Gudang](#-multi-gudang) | [🏭 Gudang Produksi](#-gudang-produksi) | [👥 Role & Akses](#-role--akses) |
 | [🔑 Akun Development](#-akun-development) | [⚙️ Menjalankan Lokal](#️-menjalankan-secara-lokal) | [✅ Pengujian](#-pengujian) | [🚀 Deployment](#-catatan-deployment) |
+| [🎬 Alur Per User](#-alur-per-user-dari-awal-sampai-akhir) | | | |
 
 <br>
 
@@ -131,13 +132,87 @@ flowchart LR
 |:-:|---|---|---|---|
 | 1 | 📝 Request | Semua role *kecuali* Purchasing | Material Request | Kebutuhan tercatat, status `PENDING` |
 | 2 | ✅ Approval | Purchasing / Accounting | — | Status `APPROVED`; bahan baru otomatis dibuat kalau belum ada di master |
-| 3 | 🛒 Purchase Order | Purchasing | PO | Komitmen pembelian ke supplier |
-| 4 | 📥 Penerimaan | Warehouse | LPB / BAP | Stok + layer FIFO terbentuk, jurnal Persediaan ↔ GRNI |
+| 3 | 🛒 Purchase Order | Purchasing / Accounting | PO | Komitmen pembelian ke supplier |
+| 4 | 📥 Penerimaan | Warehouse / Purchasing | LPB / BAP | Stok + layer FIFO terbentuk, jurnal Persediaan ↔ GRNI |
 | 5 | 🔧 Pemakaian | Warehouse / Produksi | NPK | Layer FIFO berkurang, jurnal Beban ↔ Persediaan |
-| 6 | 🧾 Invoice | Purchasing | Faktur Pembelian | GRNI → Hutang Usaha, status `PENDING_APPROVAL` |
+| 6 | 🧾 Invoice | Purchasing / Accounting | Faktur Pembelian | GRNI → Hutang Usaha, status `PENDING_APPROVAL` |
 | 7 | 🕵️ Approval Invoice | **Accounting Manager** | — | Invoice diposting ke jurnal, siap dibayar (maker-checker) |
 | 8 | 💳 Pembayaran | Finance | Pembayaran Faktur | Hutang berkurang, jurnal Kas/Bank, PPh dipotong |
 | 9 | 📊 Pelaporan | Accounting | Laporan Keuangan | Lima laporan PSAK 1 (Laba Rugi, Neraca, Arus Kas, Perubahan Ekuitas, CALK) plus Neraca Saldo & Buku Besar — HTML/PDF/Excel |
+
+<br>
+
+## 🎬 Alur Per User: dari awal sampai akhir
+
+Empat lembar animasi di bawah menggambarkan satu perjalanan utuh, dari akun pertama sampai laporan keuangan. Setiap kotak memuat nama dokumen dan **role yang boleh mengerjakannya**. Siapa boleh apa dibaca dari policy di `app/Policies` dan gate di `app/Providers/AuthServiceProvider.php`, bukan dari dokumen lama; kalau keduanya berbeda, kode yang benar. Sumber gambar: `docs/alur/alur.js`.
+
+### Lembar 1: Persiapan
+
+![Persiapan: akun, gudang, master](docs/alur/setup.gif)
+
+| Langkah | Role | Yang dikerjakan |
+|:-:|---|---|
+| 1 | 👑 Super Admin | Membuat, mengubah, dan menonaktifkan akun. Policy `UserPolicy` menolak semua role lain. |
+| 2 | 👑 Super Admin | Memberi satu role (0 sampai 6) ke tiap akun. |
+| 3 | 📦 Warehouse | Membuat gudang dan membagi gudang ke operator (**Pembagian Gudang**). Operator baru mulai dengan nol gudang. |
+| 4 | 🛍️ Purchasing | Mengisi master supplier. Master bahan boleh diisi Purchasing, Warehouse, atau Accounting. |
+| 5 | 📊 Accounting | Menyiapkan bagan akun (COA), mapping, tarif pajak, dan kunci periode. |
+
+### Lembar 2: Alur beli
+
+![Alur beli: dari request sampai bayar](docs/alur/beli.gif)
+
+| # | Dokumen | Dibuat / dikerjakan oleh | Disetujui / dilanjutkan oleh |
+|:-:|---|---|---|
+| 1 | Request barang | Semua role **kecuali** Purchasing | |
+| 2 | Persetujuan request | Purchasing, Accounting | |
+| 3 | PO | Purchasing, Accounting | |
+| 4 | LPB (penerimaan) | Warehouse, Purchasing | langsung `POSTED`, stok FIFO terbentuk |
+| 5 | Faktur pembelian | Purchasing, Accounting | status `PENDING_APPROVAL` |
+| 6 | Persetujuan faktur | 🕵️ Accounting Manager | hanya dia |
+| 7 | Pembayaran | 💳 Finance | hanya dia; faktur belum disetujui tidak bisa dibayar |
+| 8 | Jurnal | otomatis | persediaan ↔ GRNI, GRNI → hutang, hutang ↔ kas |
+
+### Lembar 3: Alur jual dan produksi
+
+![Alur jual dan produksi](docs/alur/jual.gif)
+
+| # | Dokumen | Dibuat / dikerjakan oleh | Catatan |
+|:-:|---|---|---|
+| 1 | Pelanggan | Purchasing, Accounting | Finance hanya melihat |
+| 2 | Pesanan penjualan | Purchasing, Accounting | plafon kredit dicek; hanya Super Admin yang boleh menembusnya, dengan alasan tertulis |
+| 3 | Perintah kerja | 🏭 Produksi, Purchasing | hanya Produksi yang menyelesaikannya dan mencatat jam kerja |
+| 4 | NPK ke WIP | Warehouse, Produksi, Purchasing, Accounting | NPK yang ditandai ke perintah kerja menumpuk di barang dalam proses |
+| 5 | Surat jalan | Draft: Warehouse, Produksi, Purchasing. Posting: Warehouse atau Produksi sesuai gudang yang ditugaskan | posting mengurangi stok FIFO dan menjurnal HPP |
+| 6 | Faktur penjualan | Draft: Accounting, Finance. Posting: **hanya** Accounting | piutang dan PPN keluaran; faktur ber-PPN wajib NSFP |
+| 7 | Penerimaan pembayaran | 💳 Finance | kelebihan bayar menjadi uang muka pelanggan |
+| 8 | Retur penjualan | 📊 Accounting | stok kembali sebagai layer baru |
+
+### Lembar 4: Kontrol
+
+![Kontrol: opname, jurnal manual, pembalikan](docs/alur/kontrol.gif)
+
+| # | Proses | Pembuat | Pemutus |
+|:-:|---|---|---|
+| 1 | Stock opname | Warehouse, Produksi (menyiapkan dan mengajukan) | 📊 Accounting (setuju, tolak, posting) |
+| 2 | Jurnal manual | 📊 Accounting | 🕵️ Accounting Manager, **bukan pembuatnya sendiri** |
+| 3 | Pembalikan LPB, NPK, retur, dan perubahan COA | 📊 Accounting | 🕵️ Accounting Manager lewat antrean persetujuan |
+| 4 | Kunci periode | 📊 Accounting | periode terkunci menolak posting baru |
+| 5 | Laporan keuangan | 📊 Accounting (Accounting Manager membaca dashboard eksekutif) | |
+
+### Ringkasan: apa yang dikerjakan tiap role
+
+| Role | Dokumen yang dibuat atau diputuskan | Hanya melihat |
+|---|---|---|
+| 👑 Super Admin | Akun pengguna; lolos semua policy (`Gate::before`), tetapi **tidak** boleh menyetujui permintaannya sendiri | semuanya |
+| 🛍️ Purchasing | Supplier, PO, faktur pembelian, pelanggan, pesanan penjualan, perintah kerja, pesanan jasa; menyetujui request | LPB, NPK, pembayaran |
+| 💳 Finance | Pembayaran faktur supplier, penerimaan pembayaran pelanggan, bukti potong | faktur, surat jalan, umur piutang |
+| 📦 Warehouse | Gudang, pembagian gudang, pemeriksaan Consider, LPB, retur pembelian, NPK, transfer, opname, surat jalan (sesuai gudang) | pesanan penjualan |
+| 📊 Accounting | COA, mapping, jurnal manual, kunci periode, aset, faktur penjualan, retur penjualan, persetujuan opname, laporan; juga PO dan faktur pembelian | semua transaksi |
+| 🏭 Produksi | Perintah kerja, NPK, transfer, opname, posting surat jalan, BOM dan pusat kerja (sesuai gudang) | pesanan penjualan |
+| 🕵️ Accounting Manager | Persetujuan faktur supplier, jurnal manual, dan pembalikan | faktur, jurnal, dashboard eksekutif |
+
+> ℹ️ Beberapa baris di tabel lain yang lebih tua (dibuat sebelum bagian ini) menyebut role lebih sempit daripada kodenya. Untuk PO, LPB, dan faktur pembelian, tabel alur di atas sudah disesuaikan dengan policy.
 
 <br>
 
