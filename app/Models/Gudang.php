@@ -26,13 +26,6 @@ class Gudang extends Model
     public function stok() { return $this->hasMany(StokGudang::class, 'gudang_id'); }
     public function pembagian() { return $this->hasMany(PembagianGudang::class, 'gudang_id'); }
     public function pengaturanBahan() { return $this->hasMany(PengaturanBahanGudang::class, 'gudang_id'); }
-    protected static function booted(): void
-    {
-        $lupakan = fn () => User::lupakanCacheAksesGudang();
-        static::saved($lupakan);
-        static::deleted($lupakan);
-    }
-
     public function pembelians() { return $this->hasMany(PesananPembelian::class, 'gudang_id'); }
     public function lpbs() { return $this->hasMany(PenerimaanBarang::class, 'gudang_id'); }
 }

@@ -27,20 +27,13 @@ class BaganAkunController extends Controller
 
         if ($request->ajax()) {
             $query = BaganAkun::query();
-            $terpakai = null;
 
             return datatables()->of($query)
                 ->addIndexColumn()
                 ->addColumn('can_update', function ($row) use ($request) {
                     return $request->user()->can('update', $row);
                 })
-                ->addColumn('can_delete', function ($row) use ($request, &$terpakai) {
-                    $row->penentuTerpakai = function () use ($row, &$terpakai) {
-                        $terpakai ??= BaganAkun::idTerpakai();
-
-                        return $terpakai->has((int) $row->id);
-                    };
-
+                ->addColumn('can_delete', function ($row) use ($request) {
                     return $request->user()->can('delete', $row);
                 })
                 ->make(true);

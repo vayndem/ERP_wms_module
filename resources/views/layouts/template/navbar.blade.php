@@ -1,9 +1,7 @@
 <div class="mm-top-navbar">
     <div class="mm-navbar-custom">
         <div class="flex items-center gap-3">
-            <button type="button" class="wrapper-menu btn btn-ghost btn-circle h-10 min-h-10 w-10" aria-label="Buka atau tutup menu utama" aria-controls="mm-sidebar-toggle" aria-expanded="false">
-                <i class="ri-menu-line" aria-hidden="true"></i>
-            </button>
+            <i class="ri-menu-line wrapper-menu"></i>
         </div>
 
         <div class="app-context-pill">
@@ -21,13 +19,13 @@
                 <i class="fa-solid fa-moon theme-icon theme-icon-dark" aria-hidden="true"></i>
             </div>
 
-            <button type="button" class="btn btn-ghost btn-sm btn-circle" id="btnFullscreen" title="Layar penuh" aria-label="Aktifkan layar penuh">
-                <i class="fa-solid fa-expand" aria-hidden="true"></i>
+            <button type="button" class="btn btn-ghost btn-sm btn-circle" id="btnFullscreen" title="Layar penuh">
+                <i class="fa-solid fa-expand"></i>
             </button>
 
             @auth
                 <div class="dropdown dropdown-end" x-data="notifikasiLonceng()">
-                    <button type="button" tabindex="0" class="btn btn-ghost btn-sm btn-circle" title="Notifikasi" aria-label="Buka notifikasi" @click="muat()">
+                    <button type="button" tabindex="0" class="btn btn-ghost btn-sm btn-circle" title="Notifikasi" @click="muat()">
                         <div class="indicator">
                             <i class="fa-solid fa-bell"></i>
                             <span class="badge indicator-item badge-error badge-xs" x-show="belumDibaca > 0"
@@ -74,7 +72,7 @@
             @endauth
 
             <div class="dropdown dropdown-end">
-                <button type="button" tabindex="0" class="profile-circle" aria-label="Buka menu profil">
+                <button type="button" tabindex="0" class="profile-circle">
                     {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}{{ strtoupper(substr(explode(' ', auth()->user()->name)[1] ?? '', 0, 1)) }}
                 </button>
                 @auth

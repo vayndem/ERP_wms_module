@@ -30,8 +30,8 @@ class KategoriBahanPolicy
     public function delete(User $user, KategoriBahan $kategoriBahan): bool
     {
         return $user->isAccounting()
-            && !($kategoriBahan->getAttribute('dipakai_bahan') ?? $kategoriBahan->bahan()->exists())
-            && !($kategoriBahan->getAttribute('dipakai_bahan_tipe') ?? $kategoriBahan->bahanByType()->exists())
-            && !($kategoriBahan->getAttribute('dipakai_lpb') ?? $kategoriBahan->lpbDetails()->exists());
+            && !$kategoriBahan->bahan()->exists()
+            && !$kategoriBahan->bahanByType()->exists()
+            && !$kategoriBahan->lpbDetails()->exists();
     }
 }

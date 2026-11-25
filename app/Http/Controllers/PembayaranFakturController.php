@@ -26,7 +26,6 @@ class PembayaranFakturController extends Controller
         $this->authorize('viewAny', PembayaranFaktur::class);
 
         $advances = PembayaranFaktur::with('invoice')
-            ->withSum('pemakaianUangMuka as pemakaian_uang_muka_agregat', 'uang_muka_dipakai')
             ->where('status', PembayaranFaktur::POSTED)
             ->where('jenis_selisih', 'UANG_MUKA_SUPPLIER')
             ->where(fn($query) => $query

@@ -20,25 +20,6 @@ class ReplenishmentService
     {
         $settings = PengaturanBahanGudang::where('aktif', true)->when($warehouseId, fn ($query) => $query->where('gudang_id', $warehouseId))->get();
         $belumTuntas = $this->permintaanBelumTuntas($warehouseId);
-        $sejak = now()->subDays(30);
-        $pemakaian = MutasiStok::whereIn('gudang_id', $settings->pluck('gudang_id')->unique())
-            ->whereIn('bahan_id', $settings->pluck('bahan_id')->unique())
-            ->where('tanggal', '>=', $sejak)
-            ->groupBy('gudang_id', 'bahan_id')
-            ->selectRaw('gudang_id, bahan_id, SUM(jumlah_keluar) as total')
-            ->get()
-            ->keyBy(fn ($row) => $row->gudang_id . ':' . $row->bahan_id);
-        $tersedia = LayerPersediaan::whereIn('gudang_id', $settings->pluck('gudang_id')->unique())
-            ->whereIn('bahan_id', $settings->pluck('bahan_id')->unique())
-            ->where('stock_status', 'AVAILABLE')
-            ->where('remaining_quantity', '>', 0)
-            ->where(function ($query) {
-                $query->whereNull('inventory_lot_id')->orWhereHas('lot', fn ($lot) => $lot->where('blocked', false)->where(fn ($expiry) => $expiry->whereNull('expires_at')->orWhereDate('expires_at', '>=', today())));
-            })
-            ->groupBy('gudang_id', 'bahan_id')
-            ->selectRaw('gudang_id, bahan_id, SUM(remaining_quantity) as total')
-            ->get()
-            ->keyBy(fn ($row) => $row->gudang_id . ':' . $row->bahan_id);
 
         foreach ($settings as $setting) {
             $suggestion = SaranPengisianUlang::firstOrNew([
@@ -50,9 +31,11 @@ class ReplenishmentService
                 continue;
             }
             $requestBerjalan = $belumTuntas->get($setting->gudang_id . ':' . $setting->bahan_id);
-            $usage = (float) ($pemakaian->get($setting->gudang_id . ':' . $setting->bahan_id)?->total ?? 0);
+            $usage = (float) MutasiStok::where('gudang_id', $setting->gudang_id)->where('bahan_id', $setting->bahan_id)->where('tanggal', '>=', now()->subDays(30))->sum('jumlah_keluar');
             $daily = $usage / 30;
-            $available = (float) ($tersedia->get($setting->gudang_id . ':' . $setting->bahan_id)?->total ?? 0);
+            $available = (float) LayerPersediaan::where('gudang_id', $setting->gudang_id)->where('bahan_id', $setting->bahan_id)->where('stock_status', 'AVAILABLE')->where('remaining_quantity', '>', 0)->where(function ($query) {
+                $query->whereNull('inventory_lot_id')->orWhereHas('lot', fn ($lot) => $lot->where('blocked', false)->where(fn ($expiry) => $expiry->whereNull('expires_at')->orWhereDate('expires_at', '>=', today())));
+            })->sum('remaining_quantity');
             $reorderPoint = max((float) $setting->titik_pemesanan, (float) $setting->stok_pengaman);
             $target = max((float) $setting->stok_maksimum, $reorderPoint);
             $suggested = $available <= $reorderPoint ? max(0, $target - $available) : 0;

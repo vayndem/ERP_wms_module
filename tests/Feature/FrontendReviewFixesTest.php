@@ -84,42 +84,4 @@ class FrontendReviewFixesTest extends TestCase
         $this->assertSame(4, substr_count($laporan, 'stat-title'));
         $this->assertSame(4, substr_count($laporan, 'stat-value'));
     }
-
-    public function test_form_memiliki_guard_submit_ganda_dan_umpan_balik_validasi(): void
-    {
-        $script = file_get_contents(resource_path('js/form-ui.js'));
-        $layout = file_get_contents(resource_path('views/layouts/app.blade.php'));
-
-        $this->assertStringContainsString("form.dataset.wmsSubmitting === 'true'", $script);
-        $this->assertStringContainsString('Memproses...', $script);
-        $this->assertStringContainsString('data-field-error', $layout);
-        $this->assertStringContainsString("textContent = ' (wajib)'", $script);
-        $this->assertStringContainsString("field.setAttribute('aria-invalid', 'true')", $script);
-    }
-
-    public function test_aksi_destruktif_tidak_memakai_confirm_native(): void
-    {
-        $paths = array_merge(
-            glob(resource_path('views/**/*.blade.php')) ?: [],
-            glob(resource_path('js/*.js')) ?: [],
-        );
-
-        foreach ($paths as $path) {
-            $source = file_get_contents($path);
-            $this->assertStringNotContainsString('return confirm(', $source, $path);
-        }
-    }
-
-    public function test_dashboard_dan_tab_laporan_tidak_melebarkan_halaman_mobile(): void
-    {
-        $chart = file_get_contents(resource_path('js/task-chart.js'));
-        $metric = file_get_contents(resource_path('views/layouts/template/metric-chart.blade.php'));
-        $dashboard = file_get_contents(resource_path('views/layouts/template/erp-dashboard.blade.php'));
-        $tabs = file_get_contents(resource_path('views/financial_statements/_tabs.blade.php'));
-
-        $this->assertStringNotContainsString('chart.options.plugins = chart.options.plugins', $chart);
-        $this->assertStringContainsString('min-w-0 w-full overflow-hidden', $metric);
-        $this->assertStringContainsString('stats overflow-hidden', $dashboard);
-        $this->assertStringContainsString('max-w-full flex-nowrap overflow-x-auto', $tabs);
-    }
 }

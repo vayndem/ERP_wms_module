@@ -17,13 +17,15 @@ use RuntimeException;
 
 class BuktiPotongService
 {
-    private ?Collection $kodeCache = null;
+    private array $kodeCache = [];
 
     private function kodeAktif(string $kode): ?KodeObjekPajak
     {
-        $this->kodeCache ??= KodeObjekPajak::aktif()->get()->keyBy('kode');
+        if (!array_key_exists($kode, $this->kodeCache)) {
+            $this->kodeCache[$kode] = KodeObjekPajak::aktif()->where('kode', $kode)->first();
+        }
 
-        return $this->kodeCache->get($kode);
+        return $this->kodeCache[$kode];
     }
 
     public function rentang(string $masa): array

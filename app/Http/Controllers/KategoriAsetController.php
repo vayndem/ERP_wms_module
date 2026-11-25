@@ -11,7 +11,7 @@ class KategoriAsetController extends Controller
     public function index()
     {
         $this->authorize('viewAny', KategoriAset::class);
-        $categories = KategoriAset::with(['assetAccount', 'accumulatedAccount', 'expenseAccount'])->withExists('assets as memiliki_aset')->orderBy('code')->get();
+        $categories = KategoriAset::with(['assetAccount', 'accumulatedAccount', 'expenseAccount'])->orderBy('code')->get();
         $accounts = BaganAkun::where('is_active', true)->where('is_postable', true)->orderBy('kode_akun')->get();
         return view('kategori_aset.index', compact('categories', 'accounts'));
     }

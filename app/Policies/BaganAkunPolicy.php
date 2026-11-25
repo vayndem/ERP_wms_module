@@ -30,9 +30,8 @@ class BaganAkunPolicy
     public function delete(User $user, BaganAkun $chartOfAccount): bool
     {
         return $user->isAccounting()
-            && !($chartOfAccount->penentuTerpakai
-                ? ($chartOfAccount->penentuTerpakai)()
-                : $chartOfAccount->jurnalDetails()->exists() || $chartOfAccount->isMapped());
+            && !$chartOfAccount->jurnalDetails()->exists()
+            && !$chartOfAccount->isMapped();
     }
 
     public function updateMapping(User $user): bool
