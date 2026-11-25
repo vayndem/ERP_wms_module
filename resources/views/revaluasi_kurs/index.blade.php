@@ -77,7 +77,7 @@
 
                     @if ($hasil['siap'] && !$hasil['sudah_diposting'])
                         <form method="POST" action="{{ route('revaluasi-kurs.posting') }}"
-                            onsubmit="return confirm('Posting revaluasi kurs periode {{ $periode }}?')">
+                            x-data @submit.prevent="AppAlert.confirm('Posting revaluasi kurs periode {{ $periode }}?').then(r => r.isConfirmed && $el.submit())">
                             @csrf
                             <input type="hidden" name="periode" value="{{ $periode }}">
                             <button type="submit" class="btn btn-warning btn-sm">Posting Revaluasi</button>

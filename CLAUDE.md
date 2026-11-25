@@ -144,7 +144,7 @@ Other nets (what each catches and cannot catch: `docs/architecture/jaring-pengam
 - `KualitasTampilanTest`: every view compiles, no raw Blade reaches the browser, no silently empty list, tables have scroll wrappers, no hardcoded colour on a rendered page. `KonsistensiTemaTest`: no hardcoded colour in sources, charts read theme tokens, both themes' elevation and contrast.
 - `HalamanTanpaEfekSampingTest`: no parameterless GET page issues `insert`/`update`/`delete`.
 - `AksesPerRoleTest`: which pages each role must reach and be refused (Super Admin smoke is blind to this because `Gate::before` opens everything).
-- `TanpaNPlusSatuTest`: no repeated query pattern above the threshold on any named GET page. `Model::preventLazyLoading` is turned on **only inside this test**, never in production code.
+- `TanpaNPlusSatuTest`: no repeated query pattern above the threshold on any named GET page, as Super Admin and as each operational role (measured 2026-11-25: the Super Admin sweep never runs a policy, so per-row policy queries only show for other roles); parameterised pages use the seeded row with the most children. `TanpaNPlusSatuPenskalaanTest` doubles rows and asserts the query count does not grow. `Model::preventLazyLoading` is turned on **only inside these tests**, never in production code.
 - `AccountingReconciliationService::checks()`: eight ledger invariants, watched by `php artisan wms:periksa-invarian` (see Feature digest).
 - `KekayaanDataDemoTest`: the demo dataset keeps every table in its `tabelYangHarusTerisi()` list non-empty (30 entries on 2026-11-20) and keeps all invariants valid.
 
@@ -349,10 +349,10 @@ A backend algorithm review fixed five defects the same day; the open findings ar
 - Reports read `Jurnal::scopeBerlaku` (trap 15). Stock-movement numbers are `MTS-YYYYMM-ULID` (trap 16).
 - The transfer-receipt journal is dated at receipt (`WmsAccountingService::postPenerimaanTransfer`); a locked period used to reject a receipt because the journal took the shipping date. `PenerimaanTransferTanggalTest`.
 - WIP release: the last shipment releases the remainder (trap 17). `PelepasanWipSisaTest`.
-- Depreciation cannot post twice for the same asset and period: unique `(aset_id, period_label)` (`penyusutan_aset_periode_unique`, migration `2026_11_20_000001`). `PenyusutanGandaTest`. A double click on "Susutkan" now fails on the unique and shows a 500 until AKT-003 catches it.
+- Depreciation cannot post twice for the same asset and period: unique `(aset_id, period_label)` (`penyusutan_aset_periode_unique`, migration `2026_11_20_000001`). `PenyusutanGandaTest`. A double click on "Susutkan" is refused with a form error (422 JSON for AJAX), not a 500 (AKT-003, fixed 2026-11-25).
 - Services take an explicit actor (trap 18). `AtribusiAktorTest`.
 - The `PastikanAkunAktif` middleware (appended to the `web` group in `bootstrap/app.php`) logs out an account deactivated mid-session; Sanctum tokens are revoked on deactivation (`AuthKontrakTest`, `AuthCelahTest`).
-- `TanpaNPlusSatuTest` guards the read paths against N+1 using `preventLazyLoading` inside the test only; write paths are deliberately left alone.
+- `TanpaNPlusSatuTest` guards the read paths against N+1 using `preventLazyLoading` inside the test only; write paths are deliberately left alone. *(updated 2026-11-25)* `User::accessibleGudangIds()` is memoised per request object and invalidated when `Gudang` or `PembagianGudang` is saved or deleted; a policy that needs a per-row existence check reads a `withExists` attribute when the list query supplied it and falls back to the query otherwise (`FakturPembelianPolicy`, `KategoriBahanPolicy`, `KategoriAsetPolicy`, `BaganAkunPolicy`).
 - `SubkontrakPersediaanTest` now asserts a delta against the subcontract warehouse balance, because the seeder leaves one unit there (`PLT-002`).
 
 ### Tax identity and metadata foundation (2026-11-20)
@@ -417,7 +417,7 @@ The authoritative list of **tasks** is `docs/backlog/README.md` (IDs, statuses, 
 
 **Externally specified, verify the spec first:** the Coretax XML for output tax invoices and the SPT Masa PPN (`PJK-008`, `PJK-013`) need the official XSD or a readable specification, which was never obtained; the existing `LaporanPajakDjpService` XML is a prototype and **must not be reported with**. The BPPU XML for withholding slips is built from the official DJP example only and has never been tried in Coretax. Never infer a layout.
 
-**Ordinary unbuilt work:** the open audit findings ALG-006 to ALG-024 (lock order, FX realisation on settlement, strict idempotent journals, rounding drift, journal index, loops), PLT-005 to PLT-011 (route coverage re-measure, test database, CI, controllers writing across models, status constants, `Auth::id()`), AUT-009/010, AKT-003/004, STK-004, PJK-009, PJK-011 to PJK-013.
+**Ordinary unbuilt work:** the open audit findings ALG-006 to ALG-024 (lock order, FX realisation on settlement, strict idempotent journals, rounding drift, journal index, loops), PLT-005 to PLT-011 (route coverage re-measure, test database, CI, controllers writing across models, status constants, `Auth::id()`), AUT-009/010, AKT-004, STK-004, PJK-009, PJK-011 to PJK-013.
 
 **Nothing open:** platform production-readiness (built 2026-09-12/13), the five PSAK 1 statements, maker-checker in the three chosen areas, per-warehouse inventory valuation, the sales, production and services domains as scoped, and the receivables/salesperson/cross-dock/BOM cluster.
 

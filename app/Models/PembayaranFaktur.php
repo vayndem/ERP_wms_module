@@ -90,6 +90,10 @@ class PembayaranFaktur extends Model
             return 0.0;
         }
 
-        return round((float) $this->kelebihan_pembayaran - (float) $this->pemakaianUangMuka()->sum('uang_muka_dipakai'), 2);
+        $dipakai = array_key_exists('pemakaian_uang_muka_agregat', $this->attributes)
+            ? (float) $this->attributes['pemakaian_uang_muka_agregat']
+            : (float) $this->pemakaianUangMuka()->sum('uang_muka_dipakai');
+
+        return round((float) $this->kelebihan_pembayaran - $dipakai, 2);
     }
 }

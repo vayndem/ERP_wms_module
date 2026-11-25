@@ -2,7 +2,7 @@
 
 Siapa boleh melakukan apa, bagaimana login dijaga, dan mengapa beberapa pengaturan bootstrap tampak aneh tetapi wajib.
 
-Referensi lengkap role matrix ada di [`feed.MD`](../../feed.MD) (bagian 3 dan 4). Dokumen ini menjelaskan mekanisme dan alasannya.
+Referensi lengkap role matrix ada di [`feed.MD`](../../feed.MD) (bagian 3 dan 4), dan gambaran alur per role yang bergerak ada di [README](../../README.md#-alur-per-user-dari-awal-sampai-akhir) (sumbernya `docs/alur/alur.js`). Dokumen ini menjelaskan mekanisme dan alasannya.
 
 ## Tujuh role
 
@@ -16,7 +16,7 @@ Referensi lengkap role matrix ada di [`feed.MD`](../../feed.MD) (bagian 3 dan 4)
 | 3 | `warehouse` | operator gudang |
 | 4 | `accounting` | |
 | 5 | `production` (Produksi) | operator gudang terbatas pada gudang yang ditugaskan |
-| 6 | `accounting_manager` | hanya menyetujui (termasuk faktur supplier); ditambah 2026-09-05 |
+| 6 | `accounting_manager` | memutuskan persetujuan maker-checker (faktur supplier, jurnal manual, pembalikan dokumen, perubahan COA/mapping), selebihnya hanya melihat; ditambah 2026-09-05, diperluas 2026-09-16 |
 
 `User` menyediakan `isSuperAdmin()`, `isPurchasing()`, …, `isAccountingManager()`, `isWarehouseOperator()` (warehouse atau produksi), dan `hasAnyRole()`. Kunci seeder pengguna per **role**, bukan email: email adalah atribut yang bisa diubah.
 
@@ -28,7 +28,7 @@ Referensi lengkap role matrix ada di [`feed.MD`](../../feed.MD) (bagian 3 dan 4)
 - `UserPolicy` mengembalikan `false` di semua method kecuali `view` (diri sendiri). Itu bukan kode mati: itulah cara menyatakan "hanya Super Admin" di repo yang melarang cek Super Admin dalam policy.
 - Aturan "pembuat tidak boleh menyetujui" harus di **service**, karena `Gate::before` akan meloloskan Super Admin di policy.
 
-Gate lintas model yang ada: `viewWmsControl`, `operateWarehouse`, `controlInventoryFinance`, `matchSupplierInvoice`, `viewFinancialStatements`, `viewExecutiveDashboard`, `viewProcurementAnalytics`, `viewKinerjaSales`, `tembusPlafonKredit` (Super Admin), `viewPiutangAging`. Selebihnya policy per model (45 file di `app/Policies`, ditemukan otomatis lewat konvensi). Policy baru mengikuti pola: helper privat "siapa boleh" dan "akses gudang", method publik `view/create/update/...` di bawahnya.
+Gate lintas model yang ada: `viewWmsControl`, `operateWarehouse`, `controlInventoryFinance`, `matchSupplierInvoice`, `viewFinancialStatements`, `viewExecutiveDashboard`, `viewProcurementAnalytics`, `viewKinerjaSales`, `tembusPlafonKredit` (Super Admin), `viewPiutangAging`. Selebihnya policy per model (46 file di `app/Policies` per 2026-11-25, ditemukan otomatis lewat konvensi). Policy baru mengikuti pola: helper privat "siapa boleh" dan "akses gudang", method publik `view/create/update/...` di bawahnya.
 
 Tiga controller (`Kit`, `GelombangPengambilan`, `PengeluaranBarang`) tidak punya policy dan tidak tanpa pagar: mereka memakai `Gate::allows('operateWarehouse')` plus `canAccessGudang()` eksplisit. Itu idiom lain, bukan lubang.
 

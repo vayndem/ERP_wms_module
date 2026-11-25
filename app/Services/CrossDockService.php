@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CrossDock;
+use App\Models\LayerPersediaan;
 use App\Models\PenerimaanBarang;
 use App\Models\PenerimaanBarangDetail;
 use App\Models\PesananPenjualan;
@@ -34,6 +35,7 @@ class CrossDockService
         $batas = now()->subDays($hariTerakhir)->startOfDay();
 
         $pesanan = PesananPenjualanDetail::with(['bahan', 'pesanan.pelanggan'])
+            ->denganJumlahTerikat()
             ->whereHas('pesanan', fn ($query) => $query
                 ->where('status', PesananPenjualan::OPEN)
                 ->when($gudangId, fn ($q) => $q->where('gudang_id', $gudangId))
@@ -48,16 +50,42 @@ class CrossDockService
         $penerimaan = $this->penerimaanTerkini($pesanan->pluck('bahan_id')->unique(), $batas);
         $terpakai = $this->jumlahTerpakaiPerDetail($penerimaan->pluck('detail_id'));
 
+        $aktifPerDetail = CrossDock::whereIn('pesanan_penjualan_detail_id', $pesanan->pluck('id'))
+            ->where('status', CrossDock::DIRESERVASI)
+            ->selectRaw('pesanan_penjualan_detail_id, SUM(jumlah) as total')
+            ->groupBy('pesanan_penjualan_detail_id')
+            ->pluck('total', 'pesanan_penjualan_detail_id');
+        $saldoStok = StokGudang::whereIn('gudang_id', $pesanan->map(fn ($detail) => (int) $detail->pesanan->gudang_id)->unique())
+            ->whereIn('bahan_id', $pesanan->pluck('bahan_id')->unique())
+            ->get()
+            ->keyBy(fn (StokGudang $saldo) => (int) $saldo->gudang_id.'-'.(int) $saldo->bahan_id);
+
+        $layerTersedia = LayerPersediaan::whereIn('gudang_id', $saldoStok->pluck('gudang_id')->unique())
+            ->whereIn('bahan_id', $saldoStok->pluck('bahan_id')->unique())
+            ->where('stock_status', 'AVAILABLE')
+            ->where('remaining_quantity', '>', 0)
+            ->where(function ($query) {
+                $query->whereNull('inventory_lot_id')->orWhereHas('lot', fn ($lot) => $lot
+                    ->where('blocked', false)
+                    ->where(fn ($expiry) => $expiry->whereNull('expires_at')->orWhereDate('expires_at', '>=', today())));
+            })
+            ->groupBy('gudang_id', 'bahan_id')
+            ->selectRaw('gudang_id, bahan_id, SUM(remaining_quantity) as total')
+            ->get()
+            ->keyBy(fn ($layer) => (int) $layer->gudang_id.'-'.(int) $layer->bahan_id);
+
         return $pesanan
-            ->flatMap(function (PesananPenjualanDetail $detail) use ($penerimaan, $terpakai) {
+            ->flatMap(function (PesananPenjualanDetail $detail) use ($penerimaan, $terpakai, $aktifPerDetail, $saldoStok, $layerTersedia) {
                 $gudang = (int) $detail->pesanan->gudang_id;
-                $sisaPesanan = round($detail->sisaKirim() - $this->jumlahAktifPesanan((int) $detail->id), 6);
+                $sisaPesanan = round($detail->sisaKirim() - round((float) ($aktifPerDetail[$detail->id] ?? 0), 6), 6);
 
                 if ($sisaPesanan <= 0.000001) {
                     return collect();
                 }
 
-                $bebas = $this->stokBebas($gudang, (int) $detail->bahan_id);
+                $kunciStok = $gudang.'-'.(int) $detail->bahan_id;
+                $saldo = $saldoStok->get($kunciStok);
+                $bebas = $saldo ? max(0, (float) ($layerTersedia->get($kunciStok)?->total ?? 0) - (float) $saldo->stok_direservasi) : 0.0;
 
                 return $penerimaan
                     ->where('bahan_id', (int) $detail->bahan_id)

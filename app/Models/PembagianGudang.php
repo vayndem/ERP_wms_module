@@ -8,6 +8,13 @@ class PembagianGudang extends Model
 {
     protected $guarded = ['id'];
     protected $casts = ['boleh_menerima' => 'boolean', 'boleh_npk' => 'boolean', 'boleh_transfer' => 'boolean', 'boleh_opname' => 'boolean'];
+
+    protected static function booted(): void
+    {
+        $lupakan = fn () => User::lupakanCacheAksesGudang();
+        static::saved($lupakan);
+        static::deleted($lupakan);
+    }
     public function user()
     {
         return $this->belongsTo(User::class);

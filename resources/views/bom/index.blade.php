@@ -162,7 +162,7 @@
                                         @endcan
                                         @can('delete', $item)
                                             <form method="POST" action="{{ route('bom.destroy', $item) }}"
-                                                onsubmit="return confirm('Hapus BOM {{ $item->kode }}?')">
+                                                x-data @submit.prevent="AppAlert.confirm('Hapus BOM {{ $item->kode }}?').then(r => r.isConfirmed && $el.submit())">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-ghost btn-xs text-error">Hapus</button>

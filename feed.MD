@@ -77,7 +77,7 @@ Role aktif:
 | 3 | `warehouse` | operasional gudang umum |
 | 4 | `accounting` | akuntansi dan kontrol |
 | 5 | `production` | operasional gudang produksi |
-| 6 | `accounting_manager` | approve faktur pembelian saja (maker-checker), ditambahkan 2026-09-05 |
+| 6 | `accounting_manager` | memutuskan persetujuan maker-checker (faktur supplier, jurnal manual, pembalikan dokumen, perubahan COA/mapping); selebihnya hanya melihat. Ditambahkan 2026-09-05, diperluas 2026-09-16 |
 
 Helper penting pada `User`:
 
@@ -124,17 +124,27 @@ Artinya:
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Bypass policy | yes | no | no | no | no | no | no |
 | Supplier | yes | yes | no | no | no | no | no |
+| PO | yes | yes | no | no | yes | no | no |
 | Request (semua role kecuali Purchasing bisa buat) | yes | approve | yes | yes | approve | yes | yes |
 | LPB | yes | yes | no | yes | no | no | no |
 | NPK | yes | yes | no | yes | yes | yes | no |
 | Transfer Gudang | yes | no | no | yes | no | yes | no |
 | Stock Opname physical | yes | no | no | yes | no | yes | no |
 | Stock Opname valuation/posting | yes | no | no | no | yes | no | no |
-| Faktur Pembelian — create | yes | yes | no | no | no | no | no |
+| Faktur Pembelian — create | yes | yes | no | no | yes | no | no |
 | Faktur Pembelian — approve (maker-checker) | yes | no | no | no | no | no | yes |
 | Payment | yes | no | yes | no | no | no | no |
-| COA/Jurnal/Tax/Period Lock | yes | no | no | no | yes | no | no |
+| COA, jurnal manual, pajak, kunci periode — kelola | yes | no | no | no | yes | no | no |
+| Jurnal manual, pembalikan dokumen, perubahan COA — putuskan | yes | no | no | no | no | no | yes |
 | Dashboard Eksekutif | yes | no | no | no | yes | no | yes |
+| Pelanggan dan pesanan penjualan — create | yes | yes | no | no | yes | no | no |
+| Surat jalan — posting (gudang yang ditugaskan) | yes | no | no | yes | no | yes | no |
+| Faktur penjualan — posting | yes | no | no | no | yes | no | no |
+| Penerimaan pembayaran pelanggan | yes | no | yes | no | no | no | no |
+| Perintah kerja — create | yes | yes | no | no | no | yes | no |
+| BOM dan pusat kerja — kelola | yes | no | no | no | yes | yes | no |
+
+Kolom 0 selalu `yes` lewat `Gate::before`; pembuat tidak boleh menyetujui permintaannya sendiri dan itu ditolak di service. Sumbernya policy di `app/Policies`; gambar alurnya ada di `docs/alur`.
 
 ### 4.2 Produksi
 
@@ -147,6 +157,7 @@ Karakteristiknya:
 - bisa membuat dan melihat `NPK` (Pemakaian Barang) dari gudang yang di-assign
 - bisa membuat dan melihat `Transfer Gudang` yang melibatkan gudang yang di-assign
 - bisa membuat dan submit `Stock Opname` pada gudang yang di-assign
+- bisa membuat dan menyelesaikan `Perintah Kerja`, memposting `Surat Jalan` dari gudang yang di-assign, dan mengelola `BOM` serta `Pusat Kerja` (bersama Accounting)
 - tidak punya visibilitas finansial
 - tidak mengelola master gudang atau pembagian gudang
 
@@ -175,7 +186,7 @@ Supplier invoice sekarang tidak langsung diposting saat dibuat:
 - Hanya role `accounting_manager` yang bisa approve, lewat `POST faktur-pembelian/{id}/approve` (`FakturPembelianController::approve()`, gated `FakturPembelianPolicy::approve()`). Approve inilah yang memicu posting jurnal ke GL.
 - Invoice berstatus `PENDING_APPROVAL` tidak bisa dibayar (`FakturPembelianPolicy::pay()`) atau diretur (`ReturPembelianController` menolak LPB dari invoice yang masih pending).
 - Cek rekonsiliasi (`AccountingReconciliationService`) dan dashboard Finance mengecualikan invoice `PENDING_APPROVAL` supaya tidak muncul sebagai temuan/aksi palsu.
-- Gate lain (COA/jurnal manual, period lock, controlled reversal) **belum** ikut pola maker-checker ini — masih dipegang penuh oleh `accounting`.
+- Sejak 2026-09-16 pola yang sama dipakai untuk jurnal manual, pembalikan dokumen terkontrol, dan perubahan COA/mapping. Membuka kunci periode sengaja tidak digerbangi dan tetap dipegang `accounting`.
 
 ## 5. Gudang dan multi-warehouse
 

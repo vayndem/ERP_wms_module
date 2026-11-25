@@ -36,8 +36,15 @@ class RevaluasiKursService
         $kurs = $this->kursPenutup($periode);
         $sudah = RevaluasiKurs::where('periode', $periode)->exists();
 
-        $baris = $this->fakturValasTerbuka()
-            ->map(function (FakturPembelian $faktur) use ($kurs, $periode) {
+        $fakturTerbuka = $this->fakturValasTerbuka();
+        $akumulasiPerFaktur = RevaluasiKurs::whereIn('faktur_pembelian_id', $fakturTerbuka->pluck('id'))
+            ->where('periode', '<', $periode)
+            ->groupBy('faktur_pembelian_id')
+            ->selectRaw('faktur_pembelian_id, SUM(selisih) as total')
+            ->pluck('total', 'faktur_pembelian_id');
+
+        $baris = $fakturTerbuka
+            ->map(function (FakturPembelian $faktur) use ($kurs, $periode, $akumulasiPerFaktur) {
                 $mataUang = strtoupper((string) $faktur->mata_uang_asing);
                 $kursTransaksi = (float) $faktur->kurs;
 
@@ -46,7 +53,7 @@ class RevaluasiKursService
                 }
 
                 $valas = round((float) $faktur->sisa_tagihan / $kursTransaksi, 2);
-                $akumulasi = $this->akumulasiSelisih((int) $faktur->id, $periode);
+                $akumulasi = round((float) ($akumulasiPerFaktur[$faktur->id] ?? 0), 2);
                 $nilaiLama = round((float) $faktur->sisa_tagihan + $akumulasi, 2);
                 $kursBaru = $kurs->has($mataUang) ? (float) $kurs[$mataUang]->kurs : null;
 
@@ -136,13 +143,6 @@ class RevaluasiKursService
     public function akumulasiSeluruh(): float
     {
         return round((float) RevaluasiKurs::sum('selisih'), 2);
-    }
-
-    private function akumulasiSelisih(int $fakturId, string $periodeSampai): float
-    {
-        return round((float) RevaluasiKurs::where('faktur_pembelian_id', $fakturId)
-            ->where('periode', '<', $periodeSampai)
-            ->sum('selisih'), 2);
     }
 
     private function fakturValasTerbuka(): Collection

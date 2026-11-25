@@ -25,6 +25,6 @@ class KategoriAsetPolicy
     }
     public function delete(User $user, KategoriAset $category): bool
     {
-        return $user->isAccounting() && !$category->assets()->exists();
+        return $user->isAccounting() && !($category->getAttribute('memiliki_aset') ?? $category->assets()->exists());
     }
 }

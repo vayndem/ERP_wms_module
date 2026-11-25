@@ -24,9 +24,14 @@ class PelangganController extends Controller
             ->withQueryString();
 
         $plafon = app(PlafonKreditService::class);
-        $eksposur = $pelanggan->mapWithKeys(fn (Pelanggan $baris) => [$baris->id => $plafon->eksposur($baris)]);
+        $eksposur = $plafon->eksposurBanyak($pelanggan->items());
+        $piutangBerjalan = \App\Models\FakturPenjualan::whereIn('pelanggan_id', collect($pelanggan->items())->pluck('id'))
+            ->whereIn('status', [\App\Models\FakturPenjualan::POSTED, \App\Models\FakturPenjualan::PARTIALLY_PAID])
+            ->groupBy('pelanggan_id')
+            ->selectRaw('pelanggan_id, SUM(sisa_tagihan) as nilai')
+            ->pluck('nilai', 'pelanggan_id');
 
-        return view('pelanggan.index', compact('pelanggan', 'cari', 'eksposur'));
+        return view('pelanggan.index', compact('pelanggan', 'cari', 'eksposur', 'piutangBerjalan'));
     }
 
     public function create()

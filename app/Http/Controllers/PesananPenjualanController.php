@@ -61,7 +61,7 @@ class PesananPenjualanController extends Controller
     {
         $this->authorize('view', $pesanan);
 
-        $pesanan->load(['pelanggan', 'gudang', 'sales', 'details.bahan', 'suratJalan']);
+        $pesanan->load(['pelanggan', 'gudang', 'sales', 'details' => fn ($query) => $query->with('bahan')->denganJumlahTerikat(), 'suratJalan']);
 
         return view('pesanan_penjualan.show', compact('pesanan'));
     }

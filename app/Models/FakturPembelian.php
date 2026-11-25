@@ -97,6 +97,12 @@ class FakturPembelian extends Model
             ->where('status', PembayaranFaktur::POSTED);
     }
 
+    public function jurnalFaktur()
+    {
+        return $this->hasMany(Jurnal::class, 'reff_id')
+            ->where('sumber_transaksi', 'INVOICE_SUPPLIER');
+    }
+
     public function receipts()
     {
         return $this->hasMany(FakturPembelianPenerimaan::class, 'invoice_lpb_id');

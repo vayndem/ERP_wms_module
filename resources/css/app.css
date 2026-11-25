@@ -182,7 +182,7 @@
     }
 
     .profile-circle {
-        @apply flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-content text-sm font-semibold;
+        @apply flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-content text-sm font-semibold;
     }
 
     .wrapper-menu {
@@ -224,6 +224,16 @@
     .modal-box {
         max-height: min(90vh, 46rem) !important;
         overflow-y: auto !important;
+    }
+
+    @media (max-width: 640px), (pointer: coarse) {
+        .btn-sm,
+        .btn-xs,
+        .btn-circle,
+        .btn-square {
+            min-height: 2.5rem;
+            min-width: 2.5rem;
+        }
     }
 
     .autosave-indicator {

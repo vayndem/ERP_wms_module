@@ -46,7 +46,7 @@ class DataPesananController extends Controller
         $this->authorize('create', DataPesanan::class);
 
         return view('data_pesanan.create', [
-            'pesananPenjualan' => PesananPenjualan::with(['pelanggan', 'details.bahan'])
+            'pesananPenjualan' => PesananPenjualan::with(['pelanggan', 'details' => fn ($query) => $query->with('bahan')->denganJumlahTerikat()])
                 ->where('status', PesananPenjualan::OPEN)
                 ->orderByDesc('tanggal')
                 ->limit(100)
@@ -75,8 +75,12 @@ class DataPesananController extends Controller
 
         $pesanan->load(['pesananPenjualan.pelanggan', 'pesananDetail.bahan', 'bahanHasil', 'gudang', 'biaya', 'pemakaian']);
 
+        $totalBiaya = round((float) $pesanan->biaya->sum('nilai'), 2);
+
         return view('data_pesanan.show', [
             'pesanan' => $pesanan,
+            'totalBiaya' => $totalBiaya,
+            'saldoWip' => $pesanan->sudahSelesai() ? round($totalBiaya - $pesanan->totalDilepas(), 2) : $totalBiaya,
             'serapan' => app(SerapanProduksiService::class)->ringkasan($pesanan),
             'pusatKerja' => PusatKerja::where('status', PusatKerja::AKTIF)->orderBy('kode')->get(),
         ]);

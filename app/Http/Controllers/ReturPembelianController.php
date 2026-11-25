@@ -48,10 +48,16 @@ class ReturPembelianController extends Controller
             ->where('document_type', '!=', 'SERVICE_BAP')
             ->with(['pembelian.supplier'])
             ->orderBy('id_lpb', 'desc')
-            ->get()
-            ->reject(function (PenerimaanBarang $lpb) {
-                $invoice = $lpb->no_invoice ? FakturPembelian::where('no_invoice', $lpb->no_invoice)->first() : null;
-                return $invoice && in_array($invoice->status, [FakturPembelian::VOID, FakturPembelian::PENDING_APPROVAL], true);
+            ->get();
+        $statusFaktur = FakturPembelian::whereIn('no_invoice', $lpbs->pluck('no_invoice')->filter()->unique())
+            ->orderBy('id')
+            ->get(['no_invoice', 'status'])
+            ->groupBy(fn (FakturPembelian $faktur) => mb_strtolower($faktur->no_invoice))
+            ->map(fn ($kelompok) => $kelompok->first()->status);
+        $lpbs = $lpbs
+            ->reject(function (PenerimaanBarang $lpb) use ($statusFaktur) {
+                $status = $lpb->no_invoice ? $statusFaktur->get(mb_strtolower($lpb->no_invoice)) : null;
+                return $status !== null && in_array($status, [FakturPembelian::VOID, FakturPembelian::PENDING_APPROVAL], true);
             })
             ->values();
         $documentNumber = $this->numbers->preview(DocumentNumberService::EXTERNAL, 'RTV');
