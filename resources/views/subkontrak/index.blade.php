@@ -144,7 +144,7 @@
                                 <td class="text-end">
                                     @can('terima', $baris)
                                         <form method="POST" action="{{ route('subkontrak.terima', $baris) }}"
-                                            onsubmit="return confirm('Catat pengembalian {{ $baris->nomor }}?')">
+                                            x-data @submit.prevent="AppAlert.confirm('Catat pengembalian {{ $baris->nomor }}?').then(r => r.isConfirmed && $el.submit())">
                                             @csrf
                                             <input type="hidden" name="tanggal" value="{{ today()->format('Y-m-d') }}">
                                             @foreach ($baris->details as $detail)

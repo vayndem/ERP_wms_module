@@ -28,6 +28,7 @@ ERP - Modul WMS adalah modular monolith Laravel 12 (PHP 8.2+, MySQL) yang menyam
 | [Roadmap](architecture/roadmap.md) | status besar per area dengan tanda status |
 | [Akuntansi dan jurnal](architecture/akuntansi-dan-jurnal.md) | posting jurnal, `REVERSED`, dimensi gudang, mapping akun, delapan invarian, period lock, maker-checker |
 | [Persediaan dan FIFO](architecture/persediaan-dan-fifo.md) | layer, FIFO/FEFO per gudang, `StokGudangService`, transfer dua fase dan akun 1304, reservasi, nomor mutasi |
+| [Alur per role](../README.md#-alur-per-user-dari-awal-sampai-akhir) | enam lembar animasi dari akun pertama sampai laporan keuangan, dengan role yang mengerjakan tiap dokumen; sumber gambar `alur/alur.js` |
 | [Otorisasi dan autentikasi](architecture/otorisasi-dan-autentikasi.md) | tujuh role, `Gate::before`, policy, scoping gudang, alur login, Sanctum, sesi habis |
 | [Pajak Indonesia](architecture/pajak-indonesia.md) | yang sudah dibangun, yang belum, dan fakta regulasi dengan status verifikasinya |
 | [Frontend dan tema](architecture/frontend-dan-tema.md) | Tailwind + daisyUI + Alpine, dua tema, aturan tanpa warna hardcode, layout guest |

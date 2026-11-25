@@ -18,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\DocumentNumberService;
 use App\Exports\GenericTableExport;
 use Maatwebsite\Excel\Facades\Excel;
+use RuntimeException;
 
 class AsetController extends Controller
 {
@@ -141,7 +142,14 @@ class AsetController extends Controller
     }
     public function depreciate(StorePenyusutanAsetRequest $request, Aset $aset)
     {
-        $this->accounting->depreciate($aset, $request->validated(), $request->user()->id);
+        try {
+            $this->accounting->depreciate($aset, $request->validated(), $request->user()->id);
+        } catch (RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+            return back()->withErrors(['penyusutan' => $e->getMessage()]);
+        }
         return back()->with('success', 'Penyusutan berhasil diposting.');
     }
     public function dispose(StorePelepasanAsetRequest $request, Aset $aset)

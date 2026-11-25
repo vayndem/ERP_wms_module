@@ -1,7 +1,7 @@
 BLUEPRINT.scene('setup', {
   title: 'Persiapan: akun, gudang, master',
   fig: 1,
-  sheet: 'LEMBAR 1 DARI 4',
+  sheet: 'LEMBAR 1 DARI 6',
   size: [800, 400],
   parts: [
     { id: 'sa', kind: 'screen', at: [100, 200], size: [100, 74], label: 'SUPER ADMIN', n: 1, lead: 'nw', name: 'Super Admin', note: 'satu-satunya yang boleh membuat, mengubah, dan menonaktifkan akun' },
@@ -37,7 +37,7 @@ BLUEPRINT.scene('setup', {
 BLUEPRINT.scene('beli', {
   title: 'Alur beli: dari request sampai bayar',
   fig: 2,
-  sheet: 'LEMBAR 2 DARI 4',
+  sheet: 'LEMBAR 2 DARI 6',
   size: [800, 400],
   parts: [
     { id: 'req', kind: 'box', at: [100, 120], size: [104, 56], label: 'REQUEST\nNON-PURCHASING', n: 1, lead: 'n', name: 'Request barang', note: 'dibuat semua role kecuali Purchasing; status awal PENDING' },
@@ -75,7 +75,7 @@ BLUEPRINT.scene('beli', {
 BLUEPRINT.scene('jual', {
   title: 'Alur jual dan produksi',
   fig: 3,
-  sheet: 'LEMBAR 3 DARI 4',
+  sheet: 'LEMBAR 3 DARI 6',
   size: [800, 400],
   parts: [
     { id: 'cus', kind: 'box', at: [100, 120], size: [104, 56], label: 'PELANGGAN\nPURCH · ACCT', n: 1, lead: 'n', name: 'Pelanggan', note: 'master dengan termin dan plafon kredit; dibuat Purchasing atau Accounting' },
@@ -111,7 +111,7 @@ BLUEPRINT.scene('jual', {
 BLUEPRINT.scene('kontrol', {
   title: 'Kontrol: opname, jurnal manual, pembalikan',
   fig: 4,
-  sheet: 'LEMBAR 4 DARI 4',
+  sheet: 'LEMBAR 4 DARI 6',
   size: [800, 400],
   parts: [
     { id: 'op', kind: 'box', at: [100, 100], size: [104, 56], label: 'OPNAME\nWH · PROD', n: 1, lead: 'n', name: 'Stock opname', note: 'disiapkan dan diajukan Warehouse atau Produksi; DRAFT lalu SUBMITTED' },
@@ -140,5 +140,80 @@ BLUEPRINT.scene('kontrol', {
     { say: 'Keduanya diputuskan Accounting Manager (5), dan pemohon tidak boleh menyetujui dirinya sendiri.', draw: ['c3', 'c4', 'mgr', 'c5'], run: [{ on: 'c3', item: 'chip', text: 'JM-1' }, { on: 'c4', item: 'chip', text: 'REV-1', with: true }, { on: 'c5', item: 'ball' }], ok: ['mgr'] },
     { say: 'Semua yang sah masuk satu buku besar (6), yang dibaca oleh seluruh laporan.', glow: ['jur'], note: { at: 'jur.w', text: 'SATU SUMBER', dx: -8, anchor: 'end' } },
     { say: 'Periode yang dikunci (7) menolak posting baru, dan laporan keuangan (8) keluar dari sana.', draw: ['c6', 'gate', 'c7', 'lap'], run: [{ on: 'c6', item: 'packet', count: 3, gap: 0.2 }, { on: 'c7', item: 'packet', count: 3, gap: 0.2 }], ok: ['lap'] }
+  ]
+});
+
+BLUEPRINT.scene('gudang', {
+  title: 'Di dalam gudang: periksa, simpan, ambil, pindah',
+  fig: 5,
+  sheet: 'LEMBAR 5 DARI 6',
+  size: [800, 400],
+  parts: [
+    { id: 'lpb', kind: 'box', at: [100, 110], size: [96, 56], label: 'LPB\nTERCATAT', n: 1, lead: 'n', name: 'LPB tercatat', note: 'dasar semua pekerjaan gudang berikutnya' },
+    { id: 'qc', kind: 'box', at: [250, 110], size: [96, 56], label: 'QC\nWH · PROD', n: 2, lead: 'n', name: 'Pemeriksaan QC', note: 'operator gudang; barang yang tertahan berstatus QC_HOLD dan tidak bisa dipakai' },
+    { id: 'put', kind: 'box', at: [400, 110], size: [96, 56], label: 'PUTAWAY\nWH · PROD', n: 3, lead: 'n', name: 'Putaway ke bin', note: 'kapasitas bin dicek berdasarkan unit dan volume' },
+    { id: 'rsv', kind: 'box', at: [550, 110], size: [96, 56], label: 'RESERVASI\nWH · PROD', n: 4, lead: 'n', name: 'Reservasi', note: 'mengunci stok untuk kebutuhan tertentu' },
+    { id: 'pick', kind: 'box', at: [700, 110], size: [96, 56], label: 'PICKING\nWH · PROD', n: 5, lead: 'n', name: 'Picking', note: 'mengurutkan lot FEFO lalu FIFO' },
+    { id: 'out', kind: 'box', at: [700, 290], size: [96, 56], label: 'NPK\nDRAFT', n: 6, lead: 's', name: 'NPK draft', note: 'hasil picking; stok FIFO berkurang saat NPK diposting' },
+    { id: 'trf', kind: 'box', at: [400, 290], size: [96, 56], label: 'TRANSFER\nWH · PROD', n: 7, lead: 's', name: 'Transfer gudang', note: 'DRAFT, DIAJUKAN, DIKIRIM, DITERIMA; hanya gudang yang ditugaskan' },
+    { id: 'trs', kind: 'box', at: [250, 290], size: [96, 56], label: 'DALAM\nPERJALANAN', n: 8, lead: 'n', name: 'Dalam perjalanan', note: 'nilai parkir di akun 1304 sampai diterima' },
+    { id: 'trm', kind: 'box', at: [100, 290], size: [96, 56], label: 'TERIMA\nGUDANG TUJUAN', n: 9, lead: 'n', name: 'Penerimaan transfer', note: 'selisih hitung tetap tercatat, tidak hilang' }
+  ],
+  lines: [
+    { id: 'g1', from: 'lpb.e', to: 'qc.w', arrow: true },
+    { id: 'g2', from: 'qc.e', to: 'put.w', arrow: true },
+    { id: 'g3', from: 'put.e', to: 'rsv.w', arrow: true },
+    { id: 'g4', from: 'rsv.e', to: 'pick.w', arrow: true },
+    { id: 'g5', from: 'pick.s', to: 'out.n', arrow: true },
+    { id: 'g6', from: 'put.s', to: 'trf.n', arrow: true },
+    { id: 'g7', from: 'trf.w', to: 'trs.e', arrow: true },
+    { id: 'g8', from: 'trs.w', to: 'trm.e', arrow: true }
+  ],
+  steps: [
+    { say: 'LPB sudah tercatat (1), tapi barangnya belum tentu layak disimpan.', draw: ['lpb'] },
+    { say: 'Jadi operator gudang memeriksanya di QC (2); yang meragukan ditahan.', draw: ['g1', 'qc'], run: [{ on: 'g1', item: 'chip', text: 'LPB-1' }], note: { at: 'qc.s', text: 'QC_HOLD', dy: 14 } },
+    { say: 'Yang lolos disimpan ke bin lewat putaway (3), dengan kapasitas bin dicek.', draw: ['g2', 'put'], run: [{ on: 'g2', item: 'chip', text: 'LOLOS' }] },
+    { say: 'Stok dikunci untuk kebutuhan tertentu lewat reservasi (4), supaya tidak diambil orang lain.', draw: ['g3', 'rsv'], run: [{ on: 'g3', item: 'ball' }] },
+    { say: 'Saat dibutuhkan, picking (5) mengambil lot FEFO dulu, lalu FIFO.', draw: ['g4', 'pick'], run: [{ on: 'g4', item: 'ball' }], note: { at: 'pick.e', text: 'FEFO', dx: -6, dy: 36, anchor: 'end' } },
+    { say: 'Hasil picking menjadi NPK draft (6); stok baru berkurang setelah diposting.', draw: ['g5', 'out'], run: [{ on: 'g5', item: 'packet', count: 2, gap: 0.2 }] },
+    { say: 'Pindah gudang? Transfer (7) memindahkan stok bersama nilainya.', draw: ['g6', 'trf'], run: [{ on: 'g6', item: 'chip', text: 'TRF-1' }] },
+    { say: 'Selama di jalan, stok dicatat dalam perjalanan (8), bukan hilang dari buku.', draw: ['g7', 'trs'], run: [{ on: 'g7', item: 'packet', count: 2, gap: 0.2 }], note: { at: 'trs.s', text: 'AKUN 1304', dy: 14 } },
+    { say: 'Gudang tujuan menerimanya (9); kalau jumlahnya kurang, selisihnya tetap tercatat.', draw: ['g8', 'trm'], run: [{ on: 'g8', item: 'packet', count: 2, gap: 0.2 }], ok: ['trm'], note: { at: 'trm.s', text: 'SELISIH TERCATAT', dy: 14 } }
+  ]
+});
+
+BLUEPRINT.scene('jasa', {
+  title: 'Jasa, pajak, dan aset tetap',
+  fig: 6,
+  sheet: 'LEMBAR 6 DARI 6',
+  size: [800, 400],
+  parts: [
+    { id: 'pj', kind: 'box', at: [100, 120], size: [104, 56], label: 'PESANAN JASA\nPURCH · ACCT', n: 1, lead: 'n', name: 'Pesanan jasa', note: 'perbaikan, sewa, atau jasa lain; dibuat Purchasing atau Accounting' },
+    { id: 'bap', kind: 'box', at: [250, 120], size: [128, 56], label: 'BAP\nWH · PURCH · ACCT', n: 2, lead: 'n', name: 'BAP (penerimaan jasa)', note: 'dibuat Warehouse, Purchasing, atau Accounting; dibatalkan Purchasing atau Accounting' },
+    { id: 'fak', kind: 'box', at: [400, 120], size: [104, 56], label: 'FAKTUR\nPURCH · ACCT', n: 3, lead: 'n', name: 'Faktur jasa', note: 'sama seperti faktur barang: menunggu Accounting Manager' },
+    { id: 'byr', kind: 'box', at: [550, 120], size: [104, 56], label: 'BAYAR\nFINANCE', n: 4, lead: 'n', name: 'Pembayaran', note: 'Finance membayar dan memotong PPh 23 atau 4(2) final' },
+    { id: 'bp', kind: 'box', at: [700, 120], size: [104, 56], label: 'BUKTI POTONG\nFINANCE · ACCT', n: 5, lead: 'n', name: 'Bukti potong', note: 'satu per pembayaran; terbit setelah nomor Coretax diisi' },
+    { id: 'ast', kind: 'box', at: [400, 290], size: [104, 56], label: 'ASET\nACCOUNTING', n: 6, lead: 's', name: 'Aset tetap', note: 'jasa yang menambah masa manfaat masuk nilai tercatat aset' },
+    { id: 'sus', kind: 'box', at: [550, 290], size: [104, 56], label: 'PENYUSUTAN\nACCOUNTING', n: 7, lead: 's', name: 'Penyusutan', note: 'manual atau otomatis bulanan; satu kali per aset per periode' },
+    { id: 'lep', kind: 'box', at: [700, 290], size: [104, 56], label: 'PELEPASAN\nACCOUNTING', n: 8, lead: 's', name: 'Pelepasan aset', note: 'dijual atau tukar tambah' }
+  ],
+  lines: [
+    { id: 'j1', from: 'pj.e', to: 'bap.w', arrow: true },
+    { id: 'j2', from: 'bap.e', to: 'fak.w', arrow: true },
+    { id: 'j3', from: 'fak.e', to: 'byr.w', arrow: true },
+    { id: 'j4', from: 'byr.e', to: 'bp.w', arrow: true },
+    { id: 'j5', from: 'fak.s', to: 'ast.n', arrow: true },
+    { id: 'j6', from: 'ast.e', to: 'sus.w', arrow: true },
+    { id: 'j7', from: 'sus.e', to: 'lep.w', arrow: true }
+  ],
+  steps: [
+    { say: 'Perbaikan atau sewa dimulai dari pesanan jasa (1).', draw: ['pj'] },
+    { say: 'Jasa selesai: BAP (2) mencatat penerimaannya, bukan stok.', draw: ['j1', 'bap'], run: [{ on: 'j1', item: 'chip', text: 'JASA-1' }] },
+    { say: 'Vendor menagih. Faktur (3) menunggu persetujuan Accounting Manager, seperti faktur barang.', draw: ['j2', 'fak'], run: [{ on: 'j2', item: 'chip', text: 'BAP-1' }], note: { at: 'fak.s', text: 'ACC MGR', dx: 10, dy: 14, anchor: 'start' } },
+    { say: 'Finance membayar (4) dan memotong PPh bila perlu.', draw: ['j3', 'byr'], run: [{ on: 'j3', item: 'chip', text: 'RP' }], note: { at: 'byr.s', text: 'POTONG PPH', dy: 14 } },
+    { say: 'Tiap pemotongan menjadi bukti potong (5); nomor Coretax diisi Finance atau Accounting.', draw: ['j4', 'bp'], run: [{ on: 'j4', item: 'chip', text: 'PPH' }] },
+    { say: 'Jasa yang menambah umur mesin tidak jadi beban: nilainya masuk aset (6).', draw: ['j5', 'ast'], run: [{ on: 'j5', item: 'chip', text: 'JASA-1' }] },
+    { say: 'Aset disusutkan tiap periode (7), dan tidak bisa dua kali untuk periode yang sama.', draw: ['j6', 'sus'], run: [{ on: 'j6', item: 'ball' }] },
+    { say: 'Saat dijual atau ditukar tambah, aset dilepas (8); semuanya dikerjakan Accounting.', draw: ['j7', 'lep'], run: [{ on: 'j7', item: 'ball' }], ok: ['lep'] }
   ]
 });

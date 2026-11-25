@@ -33,6 +33,7 @@ class FakturPembelianController extends Controller
         if ($request->ajax()) {
             $paymentStatus = $request->input('payment_status');
             $query = FakturPembelian::with(['supplier'])
+                ->withExists(['payments as memiliki_pembayaran', 'jurnalFaktur as memiliki_jurnal_faktur'])
                 ->when(
                     in_array((string) $paymentStatus, [FakturPembelian::PENDING_APPROVAL, FakturPembelian::UNPAID, FakturPembelian::PARTIALLY_PAID, FakturPembelian::PAID], true),
                     fn($query) => $query->where('status', $paymentStatus)

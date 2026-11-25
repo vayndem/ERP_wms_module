@@ -5,6 +5,7 @@ import initTaskCharts from './task-chart';
 import notifikasiLonceng from './notification-bell';
 import './format';
 import './alert';
+import './form-ui';
 import './ajax-modal';
 import './smart-picker';
 import './number-format';

@@ -27,6 +27,10 @@ ready(() => {
             body.classList.toggle('sidebar-collapsed');
             window.localStorage.setItem('inventory-sidebar-collapsed', body.classList.contains('sidebar-collapsed') ? '1' : '0');
         }
+        const isOpen = window.matchMedia('(max-width: 991.98px)').matches
+            ? body.classList.contains('sidebar-open')
+            : !body.classList.contains('sidebar-collapsed');
+        toggles.forEach((toggle) => toggle.setAttribute('aria-expanded', String(isOpen)));
     }
 
     if (window.localStorage.getItem('inventory-sidebar-collapsed') === '1' &&
@@ -46,7 +50,10 @@ ready(() => {
         });
     });
 
-    overlay?.addEventListener('click', () => body.classList.remove('sidebar-open'));
+    overlay?.addEventListener('click', () => {
+        body.classList.remove('sidebar-open');
+        toggles.forEach((toggle) => toggle.setAttribute('aria-expanded', 'false'));
+    });
 
     if (darkMode) {
         const savedTheme = window.localStorage.getItem('inventory-theme') ||

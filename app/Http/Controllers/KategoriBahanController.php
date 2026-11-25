@@ -23,7 +23,7 @@ class KategoriBahanController extends Controller
                 'coaClearingLpb',
                 'coaBebanSelisihOpname',
                 'coaKoreksiOpname'
-            ]);
+            ])->withExists(['bahan as dipakai_bahan', 'bahanByType as dipakai_bahan_tipe', 'lpbDetails as dipakai_lpb']);
 
             return datatables()->of($query)
                 ->addIndexColumn()

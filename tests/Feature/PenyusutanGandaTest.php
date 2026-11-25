@@ -63,6 +63,25 @@ class PenyusutanGandaTest extends TestCase
         $this->assertEqualsWithDelta(100000.0, (float) $aset->fresh()->accumulated_depreciation, 0.01);
     }
 
+    public function test_a_second_depreciation_request_through_the_route_is_a_validation_error_not_a_500(): void
+    {
+        $user = User::factory()->create(['type' => User::ROLE_ACCOUNTING]);
+        $aset = $this->aset($user);
+        $payload = ['posting_date' => today()->toDateString(), 'period_label' => 'Periode Rute Ganda'];
+
+        $this->actingAs($user)->post(route('aset.depreciate', $aset), $payload)->assertSessionHasNoErrors();
+
+        $kedua = $this->actingAs($user)->from(route('aset.show', $aset))->post(route('aset.depreciate', $aset), $payload);
+        $kedua->assertRedirect(route('aset.show', $aset));
+        $kedua->assertSessionHasErrors('penyusutan');
+        $this->assertStringContainsString('sudah disusutkan', session('errors')->first('penyusutan'));
+
+        $json = $this->actingAs($user)->postJson(route('aset.depreciate', $aset), $payload);
+        $json->assertStatus(422)->assertJson(['success' => false]);
+
+        $this->assertSame(1, PenyusutanAset::where('aset_id', $aset->id)->where('period_label', 'Periode Rute Ganda')->count());
+    }
+
     public function test_the_schema_itself_refuses_a_duplicate_period_for_one_asset(): void
     {
         $this->assertTrue(

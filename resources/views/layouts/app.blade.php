@@ -30,6 +30,16 @@
         @include('layouts.template.sidebar')
         @include('layouts.template.navbar')
 
+        @if ($errors->any())
+            <div id="wms-validation-errors" hidden>
+                @foreach ($errors->messages() as $field => $messages)
+                    @foreach ($messages as $message)
+                        <span data-field-error="{{ $field }}">{{ $message }}</span>
+                    @endforeach
+                @endforeach
+            </div>
+        @endif
+
         @yield('content')
         @include('layouts.template.page-help')
     </div>

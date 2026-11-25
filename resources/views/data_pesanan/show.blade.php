@@ -48,7 +48,7 @@
             </div>
             <div class="rounded-lg border border-base-300 p-4">
                 <div class="text-xs uppercase text-base-content/60">Biaya Terserap</div>
-                <div class="text-xl font-bold">Rp {{ number_format($pesanan->totalBiaya(), 0, ',', '.') }}</div>
+                <div class="text-xl font-bold">Rp {{ number_format($totalBiaya, 0, ',', '.') }}</div>
             </div>
             <div class="rounded-lg border border-base-300 p-4">
                 <div class="text-xs uppercase text-base-content/60">Harga Pokok per Unit</div>
@@ -58,7 +58,7 @@
             </div>
             <div class="rounded-lg border border-info/40 bg-info/5 p-4">
                 <div class="text-xs uppercase text-base-content/60">Saldo Barang Dalam Proses</div>
-                <div class="text-xl font-bold text-info">Rp {{ number_format($pesanan->saldoWip(), 0, ',', '.') }}</div>
+                <div class="text-xl font-bold text-info">Rp {{ number_format($saldoWip, 0, ',', '.') }}</div>
             </div>
         </div>
 
@@ -151,7 +151,7 @@
                                     @can('catatJamKerja', $pesanan)
                                         @if ($pesanan->menerimaBiaya())
                                             <form method="POST" action="{{ route('data-pesanan.jam-kerja.hapus', [$pesanan, $jk]) }}"
-                                                onsubmit="return confirm('Tarik kembali serapan {{ $jk->nomor }}?')">
+                                                x-data @submit.prevent="AppAlert.confirm('Tarik kembali serapan {{ $jk->nomor }}?').then(r => r.isConfirmed && $el.submit())">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-ghost btn-xs text-error">Tarik</button>
@@ -188,7 +188,7 @@
                     <tfoot>
                         <tr class="bg-base-200/40 font-bold">
                             <td colspan="3" class="text-end">Total</td>
-                            <td class="text-end">Rp {{ number_format($pesanan->totalBiaya(), 0, ',', '.') }}</td>
+                            <td class="text-end">Rp {{ number_format($totalBiaya, 0, ',', '.') }}</td>
                         </tr>
                     </tfoot>
                 </table>

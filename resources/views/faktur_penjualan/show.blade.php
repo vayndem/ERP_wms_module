@@ -19,7 +19,7 @@
                 @endcan
                 @can('delete', $faktur)
                     <form method="POST" action="{{ route('faktur-penjualan.destroy', $faktur) }}"
-                        onsubmit="return confirm('Hapus faktur draft ini? Surat jalannya bisa difakturkan ulang setelah dihapus.')">
+                        x-data @submit.prevent="AppAlert.confirm('Hapus faktur draft ini? Surat jalannya bisa difakturkan ulang setelah dihapus.').then(r => r.isConfirmed && $el.submit())">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn btn-ghost btn-sm">Hapus Draft</button>
                     </form>

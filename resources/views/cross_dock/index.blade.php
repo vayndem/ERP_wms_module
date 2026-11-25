@@ -129,7 +129,7 @@
                                 <td class="text-end">
                                     @can('batalkan', $baris)
                                         <form method="POST" action="{{ route('cross-dock.batalkan', $baris) }}"
-                                            onsubmit="return confirm('Batalkan cross dock {{ $baris->nomor }} dan lepas reservasinya?')">
+                                            x-data @submit.prevent="AppAlert.confirm('Batalkan cross dock {{ $baris->nomor }} dan lepas reservasinya?').then(r => r.isConfirmed && $el.submit())">
                                             @csrf
                                             <button type="submit" class="btn btn-ghost btn-xs text-error">Batalkan</button>
                                         </form>

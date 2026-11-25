@@ -47,6 +47,31 @@ class BaganAkun extends Model
         return $this->hasMany(JurnalDetail::class, 'coa_id');
     }
 
+    public ?\Closure $penentuTerpakai = null;
+
+    public static function idTerpakai(): \Illuminate\Support\Collection
+    {
+        $sumber = [
+            [JurnalDetail::class, ['coa_id']],
+            [AccountingSetting::class, ['coa_id']],
+            [KategoriBahan::class, ['coa_persediaan_id', 'coa_beban_id', 'coa_clearing_lpb_id', 'coa_beban_selisih_opname_id', 'coa_koreksi_opname_id']],
+            [KategoriAset::class, ['akun_aset_id', 'accumulated_depreciation_coa_id', 'depreciation_expense_coa_id', 'disposal_gain_coa_id', 'disposal_loss_coa_id']],
+            [KategoriJasa::class, ['expense_coa_id', 'grni_coa_id']],
+            [Aset::class, ['acquisition_credit_coa_id']],
+            [PelepasanAset::class, ['cash_bank_coa_id']],
+        ];
+
+        $ids = collect();
+
+        foreach ($sumber as [$model, $kolom]) {
+            foreach ($kolom as $nama) {
+                $ids = $ids->merge($model::query()->whereNotNull($nama)->distinct()->pluck($nama));
+            }
+        }
+
+        return $ids->map(fn ($id) => (int) $id)->flip();
+    }
+
     public function isMapped(): bool
     {
         return AccountingSetting::where('coa_id', $this->id)->exists()

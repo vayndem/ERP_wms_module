@@ -65,7 +65,7 @@
             </div>
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 @forelse ($dashboard['kpi'] as $item)
-                    <a href="{{ $item['url'] }}" class="stats border border-base-300 bg-base-100 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-md active:translate-y-0 motion-reduce:transform-none motion-reduce:transition-none">
+                    <a href="{{ $item['url'] }}" class="stats overflow-hidden border border-base-300 bg-base-100 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-md active:translate-y-0 motion-reduce:transform-none motion-reduce:transition-none">
                         <div class="stat p-4">
                             <div class="stat-figure">
                                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {{ $kpiToneClasses[$item['tone'] ?? 'neutral'] }}">

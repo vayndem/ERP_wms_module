@@ -66,7 +66,8 @@ Melemahkan aturan agar kode yang melanggar lolos tidak boleh dilakukan tanpa kep
 | Dokumen yang memposting jurnal atau stok | [akuntansi dan jurnal](akuntansi-dan-jurnal.md) atau [persediaan dan FIFO](persediaan-dan-fifo.md); invarian baru bila ada subledger baru |
 | Akun COA atau kunci mapping baru | konstanta dan whitelist `AccountingSetting::accountId()`, [akuntansi dan jurnal](akuntansi-dan-jurnal.md) |
 | File route baru | daftar wajib di `ArchitectureConventionTest`, [peta lapisan](module-map.md) |
-| Role atau gate baru | [otorisasi dan autentikasi](otorisasi-dan-autentikasi.md), `AksesPerRoleTest`, `feed.MD` role matrix |
+| Role atau gate baru | [otorisasi dan autentikasi](otorisasi-dan-autentikasi.md), `AksesPerRoleTest`, `feed.MD` role matrix, dan lembar yang terkena di `docs/alur/alur.js` (render ulang GIF dan PNG-nya) |
+| Dokumen atau langkah baru di alur beli, jual, gudang, jasa, atau kontrol | lembar terkait di `docs/alur/alur.js` dan tabelnya di README |
 | Halaman baru | [menambah halaman](../guides/adding-a-page.md) bila ada pola baru; sidebar; `AksesPerRoleTest` |
 | Perubahan pajak | [pajak Indonesia](pajak-indonesia.md); label verifikasi fakta regulasi |
 | Tes jaring baru atau diubah | [jaring pengaman test](jaring-pengaman-test.md) |

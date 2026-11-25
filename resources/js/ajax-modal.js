@@ -66,8 +66,7 @@ export function closeAjaxModal(el) {
 
 export async function submitAjaxForm(event, options = {}) {
     const form = event.target.closest ? (event.target.closest('form') || event.target) : event.target;
-    const submitBtn = form.querySelector('[type="submit"]');
-    submitBtn?.setAttribute('disabled', 'disabled');
+    if (!window.wmsFormSubmit?.begin(form, event.submitter)) return false;
 
     try {
         const method = form.querySelector('input[name="_method"]')?.value.toUpperCase() || 'POST';
@@ -94,7 +93,7 @@ export async function submitAjaxForm(event, options = {}) {
         window.AppAlert?.error('Gagal memproses permintaan.');
         return false;
     } finally {
-        submitBtn?.removeAttribute('disabled');
+        window.wmsFormSubmit?.end(form);
     }
 }
 

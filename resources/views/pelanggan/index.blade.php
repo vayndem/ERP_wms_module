@@ -49,7 +49,7 @@
                                 <td class="text-xs">{{ $baris->telp ?: '-' }}<br>{{ $baris->email }}</td>
                                 <td class="text-end">{{ $baris->termin_hari }} hari</td>
                                 <td class="text-end">Rp {{ number_format($baris->plafon_kredit, 0, ',', '.') }}</td>
-                                <td class="text-end">Rp {{ number_format($baris->piutangBerjalan(), 0, ',', '.') }}</td>
+                                <td class="text-end">Rp {{ number_format(round((float) ($piutangBerjalan[$baris->id] ?? 0), 2), 0, ',', '.') }}</td>
                                 @php($hitung = $eksposur[$baris->id])
                                 <td class="text-end">Rp {{ number_format($hitung['total'], 0, ',', '.') }}</td>
                                 <td class="text-end {{ $hitung['sisa_plafon'] !== null && $hitung['sisa_plafon'] < 0 ? 'text-error font-semibold' : '' }}">

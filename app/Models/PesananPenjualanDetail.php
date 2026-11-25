@@ -36,8 +36,18 @@ class PesananPenjualanDetail extends Model
         return $this->hasMany(SuratJalanDetail::class, 'pesanan_penjualan_detail_id');
     }
 
+    public function scopeDenganJumlahTerikat($query)
+    {
+        return $query->withSum(['suratJalanDetails as jumlah_terikat_agregat' => fn ($detail) => $detail
+            ->whereHas('suratJalan', fn ($suratJalan) => $suratJalan->whereIn('status', [SuratJalan::DRAFT, SuratJalan::POSTED]))], 'jumlah');
+    }
+
     public function jumlahTerikat(): float
     {
+        if (array_key_exists('jumlah_terikat_agregat', $this->attributes)) {
+            return round((float) $this->attributes['jumlah_terikat_agregat'], 6);
+        }
+
         return round((float) $this->suratJalanDetails()
             ->whereHas('suratJalan', fn ($query) => $query->whereIn('status', [SuratJalan::DRAFT, SuratJalan::POSTED]))
             ->sum('jumlah'), 6);
