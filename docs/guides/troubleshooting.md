@@ -40,7 +40,7 @@ Semua baris berasal dari jebakan yang tercatat di `CLAUDE.md` atau dari perilaku
 | Nomor dokumen melompat atau habis | form memakai metode yang mengalokasikan, atau klien mengirim nomor | pakai `preview()` untuk tampilan; alokasi hanya di `store()` ([membuat alur dokumen](creating-a-document-flow.md#2-penomoran)) |
 | Posting transaksi bertanggal lalu ditolak "periode … sudah dikunci" | period lock | itu perilaku benar; pakai tanggal kejadian sebenarnya |
 | NPK menolak "Stok layer … tidak mencukupi" padahal stok persis sama | perbandingan float di `consumeStock` tanpa toleransi (temuan audit [ALG-013](../backlog/alg-audit-algoritma.md)) | belum diperbaiki; kurangi atau ubah jumlah sedikit, atau kerjakan ALG-013 |
-| Pesan "sudah disusutkan untuk periode …" setelah klik ganda "Susutkan" | penolakan yang disengaja: kunci baris aset dan unik periode mencegah data ganda, dan controller menampilkannya sebagai galat form ([AKT-003](../backlog/akt-akuntansi.md)) | tidak ada yang perlu diperbaiki; cek riwayat penyusutan aset |
+| Klik ganda "Susutkan" memberi 500 | `AsetController::depreciate` tidak menangkap `RuntimeException` ([AKT-003](../backlog/akt-akuntansi.md)) | data tidak dobel (unik periode); pesan ramah belum ada |
 | Satu login gagal menghasilkan dua baris audit; tes throttle gagal di separuh jumlah percobaan | penemuan otomatis event Laravel 12 mengikat listener dua kali | pastikan `->withEvents(discover: false)` tetap ada di `bootstrap/app.php` |
 
 ## Tampilan

@@ -1,4 +1,4 @@
-<div role="tablist" aria-label="Jenis laporan keuangan" class="tabs tabs-boxed mb-4 max-w-full flex-nowrap overflow-x-auto">
+<div role="tablist" class="tabs tabs-boxed mb-4">
     <a role="tab" href="{{ route('financial-statements.neraca-saldo') }}" class="tab {{ request()->routeIs('financial-statements.neraca-saldo') ? 'tab-active' : '' }}">
         <i class="fa-solid fa-scale-balanced"></i>&nbsp;Neraca Saldo
     </a>

@@ -144,7 +144,7 @@ flowchart LR
 
 ## 🎬 Alur Per User: dari awal sampai akhir
 
-Enam lembar animasi di bawah menggambarkan satu perjalanan utuh, dari akun pertama sampai laporan keuangan. Setiap kotak memuat nama dokumen dan **role yang boleh mengerjakannya**. Siapa boleh apa dibaca dari policy di `app/Policies` dan gate di `app/Providers/AuthServiceProvider.php`; kalau dokumen dan kode berbeda, kode yang benar. Sumber gambar: `docs/alur/alur.js`, dirender ulang setiap alur atau hak akses berubah.
+Empat lembar animasi di bawah menggambarkan satu perjalanan utuh, dari akun pertama sampai laporan keuangan. Setiap kotak memuat nama dokumen dan **role yang boleh mengerjakannya**. Siapa boleh apa dibaca dari policy di `app/Policies` dan gate di `app/Providers/AuthServiceProvider.php`, bukan dari dokumen lama; kalau keduanya berbeda, kode yang benar. Sumber gambar: `docs/alur/alur.js`.
 
 ### Lembar 1: Persiapan
 
@@ -200,35 +200,19 @@ Enam lembar animasi di bawah menggambarkan satu perjalanan utuh, dari akun perta
 | 4 | Kunci periode | 📊 Accounting | periode terkunci menolak posting baru |
 | 5 | Laporan keuangan | 📊 Accounting (Accounting Manager membaca dashboard eksekutif) | |
 
-### Lembar 5: Di dalam gudang
+### Ringkasan: apa yang dikerjakan tiap role
 
-![Di dalam gudang: periksa, simpan, ambil, pindah](docs/alur/gudang.gif)
+| Role | Dokumen yang dibuat atau diputuskan | Hanya melihat |
+|---|---|---|
+| 👑 Super Admin | Akun pengguna; lolos semua policy (`Gate::before`), tetapi **tidak** boleh menyetujui permintaannya sendiri | semuanya |
+| 🛍️ Purchasing | Supplier, PO, faktur pembelian, pelanggan, pesanan penjualan, perintah kerja, pesanan jasa; menyetujui request | LPB, NPK, pembayaran |
+| 💳 Finance | Pembayaran faktur supplier, penerimaan pembayaran pelanggan, bukti potong | faktur, surat jalan, umur piutang |
+| 📦 Warehouse | Gudang, pembagian gudang, pemeriksaan Consider, LPB, retur pembelian, NPK, transfer, opname, surat jalan (sesuai gudang) | pesanan penjualan |
+| 📊 Accounting | COA, mapping, jurnal manual, kunci periode, aset, faktur penjualan, retur penjualan, persetujuan opname, laporan; juga PO dan faktur pembelian | semua transaksi |
+| 🏭 Produksi | Perintah kerja, NPK, transfer, opname, posting surat jalan, BOM dan pusat kerja (sesuai gudang) | pesanan penjualan |
+| 🕵️ Accounting Manager | Persetujuan faktur supplier, jurnal manual, dan pembalikan | faktur, jurnal, dashboard eksekutif |
 
-| # | Proses | Dikerjakan oleh | Catatan |
-|:-:|---|---|---|
-| 1 | QC, putaway, reservasi, picking | Warehouse dan Produksi, hanya di gudang yang ditugaskan | satu gate, `operateWarehouse`; barang yang ditahan QC tidak bisa dipakai |
-| 2 | Hasil picking | Warehouse, Produksi | menjadi NPK `DRAFT`; stok FIFO baru berkurang saat NPK diposting |
-| 3 | Transfer gudang | Warehouse, Produksi | `DRAFT` → `DIAJUKAN` → `DIKIRIM` → `DITERIMA`; saat dikirim nilainya parkir di akun 1304 |
-| 4 | Pemeriksaan Consider, master gudang, pembagian gudang | **hanya** Warehouse | Produksi tidak mengelola gudang |
-| 5 | Kit, cross dock, gelombang pengambilan, subkontrak | Warehouse, Produksi | Purchasing boleh melihat pengiriman subkontrak |
-| 6 | Pembalikan LPB, NPK, retur; biaya tambahan (landed cost) | Accounting | lewat antrean persetujuan Accounting Manager |
-| 7 | Pencocokan faktur dengan LPB (3-way match) | Purchasing, Accounting | |
-
-### Lembar 6: Jasa, pajak, dan aset tetap
-
-![Jasa, pajak, dan aset tetap](docs/alur/jasa.gif)
-
-| # | Dokumen | Dibuat / dikerjakan oleh | Catatan |
-|:-:|---|---|---|
-| 1 | Pesanan jasa | Purchasing, Accounting | tidak bisa diubah setelah punya BAP |
-| 2 | BAP (penerimaan jasa) | Warehouse, Purchasing, Accounting | dibatalkan oleh Purchasing atau Accounting selama belum dipakai faktur |
-| 3 | Faktur jasa | Purchasing, Accounting | menunggu Accounting Manager, sama seperti faktur barang |
-| 4 | Pembayaran | Finance | memotong PPh 23 atau 4(2) final bila ada |
-| 5 | Bukti potong | Finance, Accounting | satu per pembayaran; terbit setelah nomor Coretax diisi |
-| 6 | Kapitalisasi jasa ke aset | otomatis saat faktur jasa diposting | jasa yang menambah masa manfaat tidak menjadi beban |
-| 7 | Aset, penyusutan, pelepasan | Accounting | penyusutan bulanan terjadwal; tidak bisa dua kali untuk satu aset dan periode |
-
-> Hak akses per role (siapa boleh apa) ada di tabel [Role & Akses](#-role--akses).
+> ℹ️ Beberapa baris di tabel lain yang lebih tua (dibuat sebelum bagian ini) menyebut role lebih sempit daripada kodenya. Untuk PO, LPB, dan faktur pembelian, tabel alur di atas sudah disesuaikan dengan policy.
 
 <br>
 
@@ -365,6 +349,8 @@ Produksi di sini selalu untuk pesanan pelanggan, jadi keluarannya **tidak dibuku
 
 **Standar dan varians (sejak 2026-09-18).** `BOM` menyimpan komponen standar per bahan hasil — satu BOM aktif per bahan. Laporan **Varians Pemakaian** membandingkan pemakaian NPK aktual sebuah perintah kerja dengan standarnya, dan menandai tiap baris sebagai boros, hemat, sesuai, atau **di luar BOM** untuk bahan yang tidak pernah direncanakan. Varians ini **murni pelaporan dan tidak menjurnal apa pun**: costing sudah berbasis pemakaian aktual, jadi menjurnal varians akan menghitung ganda.
 
+Yang belum ada: penyerapan tenaga kerja dan overhead, serta routing/work centre.
+
 Seeder default membuat: `Gudang Utama`, `Gudang Produksi`, `Gudang Consider`, `Gudang Rusak`.
 
 <br>
@@ -376,11 +362,11 @@ Role disimpan di tabel `user_roles`, direferensikan oleh kolom `users.type`.
 | Type | Role | Akses Utama |
 |:-:|---|---|
 | 0 | 👑 SuperAdmin | Akses penuh tanpa pengecualian (`Gate::before`) |
-| 1 | 🛍️ Purchasing | Supplier, persetujuan request, PO, LPB, faktur pembelian, jasa, pelanggan, pesanan penjualan, perintah kerja, analitik pengadaan |
-| 2 | 💳 Finance | Melihat invoice, mencatat/void pembayaran supplier, menerima pembayaran pelanggan, bukti potong, umur piutang |
+| 1 | 🛍️ Purchasing | Supplier, request, PO, LPB, invoice, jasa, pelanggan, pesanan penjualan, perintah kerja, analitik pengadaan |
+| 2 | 💳 Finance | Melihat invoice, mencatat/void pembayaran supplier, menerima pembayaran pelanggan |
 | 3 | 📦 Warehouse | Operasional gudang **sesuai assignment gudang** termasuk posting surat jalan, tanpa visibilitas finansial sensitif |
-| 4 | 📊 Accounting | COA, mapping, jurnal, pajak, period lock, rekonsiliasi, approval opname, aset, faktur penjualan, retur penjualan; juga PO, faktur pembelian, jasa, pelanggan, pesanan penjualan, dan pembalikan dokumen |
-| 5 | 🏭 Produksi | Transfer, NPK, saldo stok, mutasi, opname, dan posting surat jalan sesuai assignment gudang, serta perintah kerja, BOM, dan pusat kerja |
+| 4 | 📊 Accounting | COA, mapping, jurnal, pajak, period lock, rekonsiliasi, approval opname, aset, faktur penjualan, retur penjualan |
+| 5 | 🏭 Produksi | Transfer, NPK, saldo stok, mutasi, opname sesuai assignment gudang, serta perintah kerja produksi |
 | 6 | 🕵️ Accounting Manager | **Maker-checker**: approve invoice supplier, jurnal manual, pembalikan dokumen, dan perubahan COA/mapping |
 
 **Catatan:**

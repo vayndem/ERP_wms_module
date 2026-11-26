@@ -138,36 +138,7 @@ class User extends Authenticatable
         return in_array((int) $this->type, $roles, true);
     }
 
-    private array $cacheGudangIds = [];
-
-    private ?\WeakReference $cacheGudangRequest = null;
-
-    private static int $versiAksesGudang = 0;
-
-    public static function lupakanCacheAksesGudang(): void
-    {
-        static::$versiAksesGudang++;
-    }
-
     public function accessibleGudangIds(?string $ability = null): array
-    {
-        if ($this->relationLoaded('pembagianGudangs')) {
-            return $this->hitungGudangIds($ability);
-        }
-
-        $request = app()->bound('request') ? app('request') : null;
-
-        if ($this->cacheGudangRequest?->get() !== $request) {
-            $this->cacheGudangIds = [];
-            $this->cacheGudangRequest = $request ? \WeakReference::create($request) : null;
-        }
-
-        $kunci = ($ability ?? '').'|'.(int) $this->type.'|'.static::$versiAksesGudang;
-
-        return $this->cacheGudangIds[$kunci] ??= $this->hitungGudangIds($ability);
-    }
-
-    private function hitungGudangIds(?string $ability): array
     {
         $gudangQuery = Gudang::query()->where('aktif', true);
 

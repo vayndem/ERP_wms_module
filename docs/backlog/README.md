@@ -21,7 +21,7 @@ Hitungan di kolom Status dihasilkan dengan perintah di [bawah](#memperbarui-hitu
 | Area | File | Isi | Status |
 |---|---|---|---|
 | AUT | [aut-autentikasi.md](aut-autentikasi.md) | login, sesi, audit akun, nonaktif, sesi habis, atribusi aktor, layout guest | ✅ 8 · ⬜ 2 |
-| AKT | [akt-akuntansi.md](akt-akuntansi.md) | akun landed cost, mapping jasa, penyusutan ganda di UI, catatan `CLAUDE.md`, period lock | ✅ 4 · ⬜ 0 · ➖ 1 |
+| AKT | [akt-akuntansi.md](akt-akuntansi.md) | akun landed cost, mapping jasa, penyusutan ganda di UI, catatan `CLAUDE.md`, period lock | ✅ 3 · ⬜ 1 · ➖ 1 |
 | STK | [stk-stok-gudang.md](stk-stok-gudang.md) | Lacak Pembelian, subkontrak, barcode, putaway | ✅ 2 · ⬜ 1 · ⛔ 1 |
 | PRD | [prd-produksi.md](prd-produksi.md) | serapan produksi, pembatalan perintah kerja, BOM, routing, barang jadi | ✅ 4 · ➖ 1 |
 | JUA | [jua-penjualan.md](jua-penjualan.md) | plafon kredit, uang muka pelanggan, umur piutang, integrasi eksternal | ✅ 3 · ➖ 1 |

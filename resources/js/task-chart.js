@@ -30,6 +30,7 @@ function terapkanWarna(chart, warna) {
         sumbu.border.color = warna.grid;
     });
 
+    chart.options.plugins = chart.options.plugins || {};
     chart.options.plugins.legend.labels.color = warna.teks;
     chart.options.plugins.tooltip.backgroundColor = warna.tooltipLatar;
     chart.options.plugins.tooltip.titleColor = warna.tooltipTeks;

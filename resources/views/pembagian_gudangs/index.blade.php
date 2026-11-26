@@ -60,7 +60,7 @@
                                 <td>
                                     @can('delete', $r)
                                         <form method="POST" action="{{ route('pembagian-gudangs.destroy', $r) }}"
-                                            x-data @submit.prevent="AppAlert.confirm('Cabut akses {{ $r->user?->name }} ke gudang {{ $r->gudang?->nama }}? Operator tanpa assignment tidak akan melihat gudang manapun.').then(r => r.isConfirmed && $el.submit())">
+                                            onsubmit="return confirm('Cabut akses {{ $r->user?->name }} ke gudang {{ $r->gudang?->nama }}? Operator tanpa assignment tidak akan melihat gudang manapun.')">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-outline btn-error btn-sm">Hapus</button>

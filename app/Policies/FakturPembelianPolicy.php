@@ -42,34 +42,18 @@ class FakturPembelianPolicy
         return $this->canManageInvoices($user);
     }
 
-    private function memilikiPembayaran(FakturPembelian $invoice): bool
-    {
-        $nilai = $invoice->getAttribute('memiliki_pembayaran');
-
-        return $nilai !== null ? (bool) $nilai : $invoice->payments()->exists();
-    }
-
-    private function memilikiJurnalFaktur(FakturPembelian $invoice): bool
-    {
-        $nilai = $invoice->getAttribute('memiliki_jurnal_faktur');
-
-        return $nilai !== null
-            ? (bool) $nilai
-            : \App\Models\Jurnal::where('sumber_transaksi', 'INVOICE_SUPPLIER')->where('reff_id', $invoice->id)->exists();
-    }
-
     public function update(User $user, FakturPembelian $invoice): bool
     {
         return $this->canManageInvoices($user)
             && $invoice->status !== FakturPembelian::VOID
-            && !$this->memilikiPembayaran($invoice)
+            && !$invoice->payments()->exists()
             && $invoice->match_status === 'PENDING'
-            && !$this->memilikiJurnalFaktur($invoice);
+            && !\App\Models\Jurnal::where('sumber_transaksi', 'INVOICE_SUPPLIER')->where('reff_id', $invoice->id)->exists();
     }
 
     public function delete(User $user, FakturPembelian $invoice): bool
     {
-        return $this->canManageInvoices($user) && $invoice->status !== FakturPembelian::VOID && !$this->memilikiPembayaran($invoice);
+        return $this->canManageInvoices($user) && $invoice->status !== FakturPembelian::VOID && !$invoice->payments()->exists();
     }
 
     public function pay(User $user, FakturPembelian $invoice): bool
